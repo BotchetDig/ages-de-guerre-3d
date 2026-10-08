@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { N8AOPass } from 'n8ao';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
@@ -31,7 +32,10 @@ const GradeShader = {
       vec2 dc = uv - 0.5; float e = dot(dc, dc);
       vec2 caOff = dc * ca * e * 0.012;
       vec3 col = vec3(0.0);
-      for (int i = 0; i < 12; i++) {
+      if (b < 0.01) {
+        // zone nette : 3 lectures seulement (aberration chromatique)
+        col = vec3(texture2D(tDiffuse, uv + caOff).r, texture2D(tDiffuse, uv).g, texture2D(tDiffuse, uv - caOff).b) * 12.0;
+      } else for (int i = 0; i < 12; i++) {
         float a = float(i) * 2.39996; float r = sqrt(float(i) + 0.5) / 3.5;
         vec2 o = vec2(cos(a), sin(a)) * r * b * 3.5 * px;
         col.r += texture2D(tDiffuse, uv + o + caOff).r;
@@ -77,12 +81,16 @@ export class GameView {
     // (l'AO n'est pas compatible avec le MSAA matériel, d'où le SMAA en fin de chaîne)
     const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType });
     this.composer = new EffectComposer(r, rt);
+    // Passe de rendu simple, utilisée à la place de l'AO en qualité basse
+    this.plainPass = new RenderPass(this.scene, this.camera);
+    this.plainPass.enabled = false;
+    this.composer.addPass(this.plainPass);
     this.ao = new N8AOPass(this.scene, this.camera, 1, 1);
     Object.assign(this.ao.configuration, { aoRadius: 1.1, distanceFalloff: 1.0, intensity: 2.6, gammaCorrection: false, halfRes: true });
     this.ao.configuration.color = new THREE.Color(0x141c2c);
     this.ao.setQualityMode('Medium');
     this.composer.addPass(this.ao);
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.75, 0.5, 0.92);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.8, 0.5, 1.05);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
     this.grade = new ShaderPass(GradeShader);
@@ -142,6 +150,29 @@ export class GameView {
   }
 
   pan(v) { this.cam.tx += v; }
+
+  // Qualité : 'high' (AO, herbe complète, ombres 2048, tilt-shift) ou 'low' (pour les machines modestes)
+  setQuality(q) {
+    if (this.quality === q) return;
+    this.quality = q;
+    const high = q === 'high';
+    this.ao.enabled = high;
+    this.plainPass.enabled = !high;
+    this.grade.uniforms.tilt.value = high ? 1 : 0;
+    this.grade.uniforms.ca.value = high ? 0.45 : 0;
+    this.renderer.setPixelRatio(high ? Math.min(window.devicePixelRatio, 1.5) : 1);
+    const sun = this.world.sun;
+    sun.shadow.mapSize.set(high ? 2048 : 1024, high ? 2048 : 1024);
+    sun.shadow.map?.dispose();
+    sun.shadow.map = null;
+    this.world.grass.count = high ? this.world.grassFull : Math.floor(this.world.grassFull * 0.4);
+    this.resize();
+  }
+
+  // Demi-largeur visible au niveau de la voie (pour la mini-carte)
+  camHalfWidth() {
+    return this.cam.dist * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * this.camera.aspect;
+  }
   focusBase(o) { this.cam.tx = baseXOf(o) + dirOf(o) * 14; }
 
   resize() {
@@ -428,7 +459,8 @@ export class GameView {
       case 'hit': {
         const v = this.units.get(e.id);
         if (v) v.flash = 1;
-        if (e.o === this.me || e.dmg >= 1) F.floaters.spawn(e.x, e.y + 0.9, 0, String(e.dmg), e.o === this.me ? 'dmg-me' : 'dmg', 0.6);
+        // Seuls les coups critiques affichent un chiffre : lisible et moins coûteux
+        if (e.crit) F.floaters.spawn(e.x, e.y + 1.1, 0, String(e.dmg), 'crit', 0.9);
         break;
       }
       case 'die':
@@ -530,6 +562,10 @@ export class GameView {
     this.vignette.uniforms.flash.value = this.flashT * 0.5;
     this.world.update(dt, this.time, c.x);
     this.grade.uniforms.time.value = this.time;
+    // La nuit, le bloom se renforce pour faire ressortir les néons
+    const night = this.world.night ?? 0;
+    this.bloom.strength = 0.8 + night * 0.5;
+    this.bloom.threshold = 1.05 - night * 0.4;
     this.fx.update(dt);
     this.fx.floaters.update(dt, this.w, this.h);
     this.composer.render();

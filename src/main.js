@@ -62,6 +62,19 @@ function issue(cmd) {
   if (applyCommand(S.g, S.me, cmd)) audio.play(cmd.c === 'upgrade' ? 'upgrade' : 'click', view.cam.x, 0.5);
 }
 
+// Événements de la simulation → vue 3D + bannières d'interface
+function handleEvents(ev, g) {
+  for (const e of ev) {
+    if (e.e === 'stance' && e.o === S.me) ui.toast(e.v === 'hold' ? 'Défense : tes unités tiennent la ligne près de ta base' : 'Attaque : tes unités avancent', 'info');
+    if (e.e === 'evolve') {
+      const name = C.AGES[e.age].name;
+      if (e.o === S.me) ui.banner(name, 'Nouvelle ère : unités, tourelles et base renforcées', 'me');
+      else ui.banner(name, "L'adversaire a évolué", 'enemy');
+    }
+  }
+  view.handle(ev, g);
+}
+
 // ---------- Démarrage / fin ----------
 
 function startGame(mode) {
@@ -174,10 +187,10 @@ async function joinOnline(code) {
   if (!S.net) return;
   S.net.onMessage = (m) => {
     if (m.t === 'start') { if (S.mode !== 'guest' || S.ended) startGame('guest'); }
-    else if (m.t === 'events' && S.mode === 'guest') view.handle(m.ev, S.g);
+    else if (m.t === 'events' && S.mode === 'guest') handleEvents(m.ev, S.g);
     else if (m.t === 'snap' && S.mode === 'guest') {
       applySnapshot(S.g, m.s);
-      view.handle(m.ev, S.g);
+      handleEvents(m.ev, S.g);
       if (S.g.over) endGame();
     }
   };
@@ -220,7 +233,7 @@ function frame(now) {
           S.net.send({ t: 'snap', s: snapshot(g), ev: S.sendEvents.concat(g.events) });
           S.sendEvents = [];
         } else if (S.mode === 'host') S.sendEvents.push(...g.events);
-        view.handle(g.events, g);
+        handleEvents(g.events, g);
         g.events.length = 0;
         if (g.over) { if (S.mode === 'host') S.net.send({ t: 'snap', s: snapshot(g), ev: [] }); endGame(); break; }
       }
@@ -240,9 +253,10 @@ function frame(now) {
   }
 
   if (S.mode !== 'menu' && !S.ended && g.players[S.me].age === 4) audio.playMusic('future');
+  if (!manual) trackPerf(dt); // les images avancées à la main (débogage) faussent la mesure
   audio.listenerX = view.cam.x;
   view.update(g, dt);
-  if (S.mode !== 'menu') ui.update(g, S.me, { enemyName: S.mode === 'solo' ? `IA ${DIFFICULTY[S.diff].label}` : 'Adversaire', speed: S.speed });
+  if (S.mode !== 'menu') ui.update(g, S.me, { enemyName: S.mode === 'solo' ? `IA ${DIFFICULTY[S.diff].label}` : 'Adversaire', speed: S.speed, camX: view.cam.x, camHalf: view.camHalfWidth() });
 }
 
 // ---------- Entrées ----------
@@ -257,7 +271,7 @@ const ACTIONS = {
   [KEYS.unit0]: { c: 'unit', k: 0 }, [KEYS.unit1]: { c: 'unit', k: 1 }, [KEYS.unit2]: { c: 'unit', k: 2 },
   [KEYS.turret0]: { c: 'turret', k: 0 }, [KEYS.turret1]: { c: 'turret', k: 1 }, [KEYS.turret2]: { c: 'turret', k: 2 },
   [KEYS.slot]: { c: 'slot' }, [KEYS.sell]: { c: 'sell' }, [KEYS.upgrade]: { c: 'upgrade' },
-  [KEYS.evolve]: { c: 'evolve' }, [KEYS.special]: { c: 'special' }, [KEYS.cancel]: { c: 'cancel' },
+  [KEYS.evolve]: { c: 'evolve' }, [KEYS.special]: { c: 'special' }, [KEYS.cancel]: { c: 'cancel' }, [KEYS.stance]: { c: 'stance' },
 };
 const NUMPAD = { Numpad1: KEYS.unit0, Numpad2: KEYS.unit1, Numpad3: KEYS.unit2 };
 
@@ -327,6 +341,7 @@ const HELP = [
   [keyLabel[KEYS.evolve], "Évoluer vers l'âge suivant"],
   ['Espace', 'Attaque spéciale'],
   [keyLabel[KEYS.cancel], 'Annuler la dernière unité en file'],
+  [keyLabel[KEYS.stance], 'Posture : attaquer / tenir la ligne'],
   ['← →  / glisser', 'Déplacer la caméra'],
   ['Molette ↑ ↓', 'Zoom'],
   ['Tab', 'Vue d’ensemble'],
@@ -383,6 +398,45 @@ for (const [a, b] of [['#vol-music', '#vol-music2'], ['#vol-sfx', '#vol-sfx2']])
       $(sel === a ? b : a).value = v;
     });
   }
+}
+
+// ---------- Qualité graphique ----------
+const loadPref = (k, d) => { try { return localStorage.getItem('aow3d.' + k) ?? d; } catch { return d; } };
+const savePref = (k, v) => { try { localStorage.setItem('aow3d.' + k, v); } catch {} };
+let qualityPref = loadPref('quality', 'auto');
+view.setQuality(qualityPref === 'low' ? 'low' : 'high');
+for (const sel of ['#quality', '#quality2']) {
+  const el = $(sel);
+  el.value = qualityPref;
+  el.addEventListener('change', () => {
+    qualityPref = el.value;
+    savePref('quality', qualityPref);
+    for (const o of ['#quality', '#quality2']) $(o).value = qualityPref;
+    view.setQuality(qualityPref === 'low' ? 'low' : 'high');
+    perf.n = 0; perf.sum = 0; perf.done = qualityPref !== 'auto';
+  });
+}
+// Auto : on mesure les 4 premières secondes visibles ; sous ~45 i/s on passe en qualité basse
+const perf = { n: 0, sum: 0, done: qualityPref !== 'auto' };
+function trackPerf(dt) {
+  if (perf.done || document.hidden || dt <= 0 || dt >= 0.1) return;
+  perf.sum += dt; perf.n++;
+  if (perf.sum < 4) return;
+  perf.done = true;
+  if (perf.sum / perf.n > 1 / 45 && view.quality === 'high') {
+    view.setQuality('low');
+    if (S.mode !== 'menu') ui.toast('Qualité réduite automatiquement pour garder un jeu fluide (réglable en pause)', 'info');
+  }
+}
+
+// Mini-carte : clic ou glisser pour déplacer la caméra
+{
+  const mm = $('#minimap');
+  const toX = (e) => { const r = mm.getBoundingClientRect(); return ((e.clientX - r.left) / r.width * 2 - 1) * (C.BASE_X + 4); };
+  let dragging = false;
+  mm.addEventListener('pointerdown', (e) => { dragging = true; mm.setPointerCapture(e.pointerId); view.cam.tx = toX(e); });
+  mm.addEventListener('pointermove', (e) => { if (dragging) view.cam.tx = toX(e); });
+  mm.addEventListener('pointerup', () => (dragging = false));
 }
 
 // ---------- Lancement ----------

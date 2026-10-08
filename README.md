@@ -17,10 +17,11 @@ npm run dev
 | 1 2 3 | Produire une unité (mêlée, distance, lourde) |
 | A Z E (AZERTY) / Q W E | Construire une tourelle |
 | R / S | Acheter un emplacement / vendre une tourelle |
-| T | Améliorer l'armée |
+| T | Améliorer l'armée (prix fixe par niveau) |
+| G | Posture : attaquer / tenir la ligne |
 | U | Évoluer |
 | Espace | Attaque spéciale |
-| ← → / glisser, molette | Caméra |
+| ← → / glisser, molette, mini-carte | Caméra |
 | Échap | Pause |
 
 ## Outils

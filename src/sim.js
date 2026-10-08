@@ -15,6 +15,7 @@ function newPlayer(i) {
     hp: C.AGES[0].baseHp, hpMax: C.AGES[0].baseHp,
     queue: [], slots: 1, turrets: [null, null, null, null],
     specialCd: 10, incomeMult: 1, powerMult: 1, up: 0, kills: 0, lost: 0,
+    stance: 'advance', // 'advance' | 'hold' (tenir la ligne près de la base)
   };
 }
 
@@ -90,12 +91,17 @@ export function applyCommand(g, o, cmd) {
     }
     case 'upgrade': {
       if (p.up >= C.UPGRADE_MAX) return false;
-      const cost = C.upgradeCost(p.age, p.up);
+      const cost = C.upgradeCost(p.up);
       if (p.gold < cost) return false;
       p.gold -= cost;
       p.xp += cost * C.SPEND_XP;
       p.up++;
       g.events.push({ e: 'upgrade', o, lvl: p.up });
+      return true;
+    }
+    case 'stance': {
+      p.stance = cmd.v ?? (p.stance === 'hold' ? 'advance' : 'hold');
+      g.events.push({ e: 'stance', o, v: p.stance });
       return true;
     }
     case 'cancel': {
@@ -190,6 +196,8 @@ function stepUnits(g, lists, dt) {
     const list = lists[o];
     const ef = lists[1 - o].find((u) => !u.dead);
     const ebx = baseXOf(1 - o);
+    const hold = g.players[o].stance === 'hold';
+    const holdX = baseXOf(o) + d * C.HOLD_LINE;
     for (let i = 0; i < list.length; i++) {
       const u = list[i];
       if (u.dead) continue;
@@ -202,7 +210,10 @@ function stepUnits(g, lists, dt) {
 
       let move = 0;
       if (!target) {
-        move = u.speed * dt;
+        // Charge : la mêlée accélère quand l'ennemi est proche
+        const charge = u.role !== 'ranged' && gapEnemy < C.CHARGE_RANGE ? C.CHARGE_MULT : 1;
+        move = u.speed * charge * dt;
+        if (hold) move = Math.min(move, (holdX - u.x) * d);
         if (ahead) move = Math.min(move, (ahead.x - u.x) * d - ahead.r - u.r - 0.25);
         move = Math.min(move, gapEnemy - 0.02, gapBase);
       }
@@ -213,12 +224,14 @@ function stepUnits(g, lists, dt) {
       if (target && u.cd <= 0) {
         u.cd = u.atkCd;
         u.lastAtk = g.t;
+        const crit = rand(g) < C.CRIT_CHANCE;
+        const dmg = u.dmg * (crit ? C.CRIT_MULT : 1);
         if (u.proj) {
-          fire(g, o, u.proj, u.x + d * u.r * 0.8, u.hitY + 0.3, target, target === BASE ? u.dmg * C.SIEGE_MULT : u.dmg, u.role === 'heavy' ? 1.2 : 0, u.age);
+          fire(g, o, u.proj, u.x + d * u.r * 0.8, u.hitY + 0.3, target, target === BASE ? dmg * C.SIEGE_MULT : dmg, u.role === 'heavy' ? 1.2 : 0, u.age, -1, crit);
         } else if (target === BASE) {
-          damageBase(g, 1 - o, u.dmg * C.SIEGE_MULT, u.x + d * (u.r + 0.3));
+          damageBase(g, 1 - o, dmg * C.SIEGE_MULT, u.x + d * (u.r + 0.3));
         } else {
-          damageUnit(g, target, u.dmg, o);
+          damageUnit(g, target, dmg, o, crit, u.role === 'heavy' ? C.KNOCKBACK_HEAVY : crit ? 0.25 : 0);
           g.events.push({ e: 'melee', o, x: target.x - d * target.r * 0.6, y: target.hitY, age: u.age, heavy: u.role === 'heavy' });
         }
       }
@@ -268,7 +281,7 @@ function stepStrikes(g, lists, dt) {
   g.strikes = g.strikes.filter((s) => !s.done);
 }
 
-function fire(g, o, kind, x0, y0, target, dmg, aoe, age, slot = -1) {
+function fire(g, o, kind, x0, y0, target, dmg, aoe, age, slot = -1, crit = false) {
   const isBase = target === BASE;
   const x1 = isBase ? baseXOf(1 - o) - dirOf(o) * C.BASE_HALF * 0.6 : target.x;
   const y1 = isBase ? 2.2 : target.hitY;
@@ -278,7 +291,7 @@ function fire(g, o, kind, x0, y0, target, dmg, aoe, age, slot = -1) {
     id: g.nextId++, owner: o, kind, age, x0, y0, x1, y1,
     tid: isBase ? -1 : target.id, p: 0,
     dur: Math.max(0.06, dist / spec.speed), arc: spec.arc * Math.min(1, dist / 8),
-    dmg, aoe, x: x0, y: y0,
+    dmg, aoe, x: x0, y: y0, crit,
   };
   g.projectiles.push(p);
   g.events.push({ e: 'shoot', o, kind, x: x0, y: y0, slot, x1, y1 });
@@ -308,20 +321,28 @@ function impact(g, p) {
     for (const u of g.units) {
       if (u.owner !== enemy || u.dead) continue;
       const d = Math.abs(u.x - p.x1) - u.r;
-      if (d <= p.aoe) damageUnit(g, u, p.dmg * (d <= p.aoe * 0.4 ? 1 : 0.6), p.owner);
+      const near = d <= p.aoe * 0.4;
+      if (d <= p.aoe) damageUnit(g, u, p.dmg * (near ? 1 : 0.6), p.owner, p.crit, C.KNOCKBACK_AOE * (near ? 1 : 0.5));
     }
     if (p.tid === -1) damageBase(g, enemy, p.dmg, p.x1);
     return;
   }
   if (p.tid === -1) return damageBase(g, enemy, p.dmg, p.x1);
   const t = g.byId.get(p.tid);
-  if (t && !t.dead) damageUnit(g, t, p.dmg, p.owner);
+  if (t && !t.dead) damageUnit(g, t, p.dmg, p.owner, p.crit, 0);
 }
 
-function damageUnit(g, u, dmg, src) {
+function damageUnit(g, u, dmg, src, crit = false, kb = 0) {
   if (u.dead) return;
   u.hp -= dmg;
-  g.events.push({ e: 'hit', id: u.id, o: u.owner, x: u.x, y: u.hitY, dmg: Math.round(dmg) });
+  if (kb > 0) {
+    // Recul vers sa propre base (les lourds encaissent mieux), sans repasser derrière la zone d'apparition
+    const d = dirOf(u.owner);
+    const minX = baseXOf(u.owner) + d * C.SPAWN_OFFSET;
+    u.x -= d * kb / (u.role === 'heavy' ? 2.5 : 1);
+    if ((u.x - minX) * d < 0) u.x = minX;
+  }
+  g.events.push({ e: 'hit', id: u.id, o: u.owner, x: u.x, y: u.hitY, dmg: Math.round(dmg), crit: crit || undefined });
   if (u.hp > 0) return;
   u.dead = true;
   const killer = g.players[src];
@@ -365,7 +386,7 @@ export function snapshot(g) {
       gold: p.gold, xp: p.xp, age: p.age, hp: p.hp, hpMax: p.hpMax, slots: p.slots,
       turrets: p.turrets.map((t) => (t ? { age: t.age, k: t.k } : null)),
       queue: p.queue.map((q) => ({ age: q.age, k: q.k, t: q.t, total: q.total })),
-      specialCd: p.specialCd, kills: p.kills, lost: p.lost, up: p.up,
+      specialCd: p.specialCd, kills: p.kills, lost: p.lost, up: p.up, stance: p.stance,
     })),
     units: g.units.map((u) => [u.id, u.owner, u.age, u.k, +u.x.toFixed(3), +(u.hp / u.hpMax).toFixed(3), u.moving ? 1 : 0, +u.lastAtk.toFixed(2), u.lvl]),
     proj: g.projectiles.map((p) => [p.id, p.kind, +p.x.toFixed(2), +p.y.toFixed(2), +(p.x1 - p.x0).toFixed(2), +(p.y1 - p.y0).toFixed(2)]),

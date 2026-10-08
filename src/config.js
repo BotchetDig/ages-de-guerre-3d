@@ -5,14 +5,14 @@ export const TICK = 1 / 30;
 export const BASE_X = 30;          // position des bases : -BASE_X (joueur 0) et +BASE_X (joueur 1)
 export const BASE_HALF = 2.6;      // demi-largeur de la hitbox d'une base
 export const SPAWN_OFFSET = 3.6;
-export const START_GOLD = 175;
+export const START_GOLD = 250;
 export const QUEUE_MAX = 5;
 export const POP_CAP = 18;          // unités vivantes + en production, par joueur
 export const SPECIAL_CD = 55;
 export const SLOT_COSTS = [0, 500, 2200, 7000];
 export const COST_MULT = [1, 3.4, 11, 36, 115];
 export const POWER_MULT = [1, 3.0, 9.0, 27, 80];
-export const TRICKLE = [2, 5, 14, 40, 110];   // or/s passif par âge
+export const TRICKLE = [3, 6, 15, 42, 115];   // or/s passif par âge
 export const KILL_GOLD = 1.0;                 // × coût de l'unité tuée
 export const KILL_XP = 0.7;
 export const SPEND_XP = 0.35;                 // XP par pièce d'or dépensée (unités, tourelles)
@@ -24,7 +24,18 @@ export const EROSION_PER_MIN = 0.25;   // +25% de dégâts subis par minute au-d
 export const EROSION_DECAY = 0.003;    // et perte de 0,3% des PV max par seconde
 export const UPGRADE_MAX = 5;
 export const UPGRADE_BONUS = 0.2;   // +20% PV et dégâts par niveau (unités produites ensuite)
-export const upgradeCost = (age, lvl) => Math.round(160 * COST_MULT[age] * Math.pow(lvl + 1, 1.6));
+// Prix fixe par niveau, indépendant de l'âge : investir tôt ou tard coûte pareil.
+export const UPGRADE_COSTS = [200, 600, 1500, 4000, 10000];
+export const upgradeCost = (lvl) => UPGRADE_COSTS[lvl] ?? Infinity;
+
+// Dynamisme du combat
+export const CRIT_CHANCE = 0.12;     // coups critiques des unités
+export const CRIT_MULT = 2;
+export const CHARGE_RANGE = 6;       // la mêlée charge quand l'ennemi est à moins de 6 m
+export const CHARGE_MULT = 1.6;
+export const KNOCKBACK_HEAVY = 0.7;  // recul infligé par un coup d'unité lourde
+export const KNOCKBACK_AOE = 0.9;    // recul infligé par une explosion
+export const HOLD_LINE = 13;         // posture « tenir la ligne » : distance max depuis sa base
 
 const ROLE = {
   melee:  { cost: 15,  hp: 55,  dmg: 12, range: 0.5, cd: 1.0, speed: 3.6, build: 0.6, r: 0.45, hitY: 1.0 },

@@ -161,3 +161,15 @@ input[type=range] { accent-color: var(--gold); width: 110px; }
 .lobby button { padding: 12px; border-radius: 10px; border: 1px solid rgba(245,192,74,.4); background: rgba(245,192,74,.1); font-weight: 700; color: var(--gold-2); }
 .lobby button:hover { background: rgba(245,192,74,.2); }
 .lobby .empty { color: var(--muted); font-size: 13px; padding: 12px; }
+
+/* ---------- Mise à jour : mini-carte, bannière, posture, qualité ---------- */
+#minimap { display: block; margin: 4px auto 2px; width: min(320px, 40vw); height: 26px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); pointer-events: auto; cursor: pointer; }
+#banner { position: absolute; left: 50%; top: 28%; transform: translate(-50%, -50%) scale(.9); text-align: center; opacity: 0; pointer-events: none; transition: opacity .35s, transform .5s cubic-bezier(.2, 1.4, .4, 1); }
+#banner.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+#banner .bt { font-family: var(--title); font-weight: 900; font-size: clamp(30px, 6vw, 64px); line-height: 1.05; background: linear-gradient(180deg, #fff6d8, var(--gold) 60%, #b5791a); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 4px 18px rgba(0,0,0,.6)); }
+#banner.enemy .bt { background: linear-gradient(180deg, #ffe0d8, #ff7a5a 60%, #a8321a); -webkit-background-clip: text; background-clip: text; }
+#banner .bs { margin-top: 6px; font-size: 15px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #fff; text-shadow: 0 2px 8px #000; }
+.util.hold { border-color: rgba(96, 165, 250, .7); background: rgba(96, 165, 250, .14); }
+.floater.crit { color: #ffd84a; font-size: 18px; font-weight: 900; }
+.floater.crit::after { content: ' !'; }
+select { font: 12px var(--ui); color: var(--text); background: rgba(0,0,0,.35); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }

@@ -3,9 +3,9 @@ import * as C from './config.js';
 import { canEvolve, baseXOf, dirOf, popOf } from './sim.js';
 
 export const DIFFICULTY = {
-  easy:   { label: 'Facile',    power: 0.85, income: 0.8,  react: 0.9,  smart: 0.4 },
+  easy:   { label: 'Facile',    power: 0.8,  income: 0.75, react: 0.9,  smart: 0.4 },
   normal: { label: 'Normal',    power: 1.0,  income: 1.0,  react: 0.55, smart: 0.75 },
-  hard:   { label: 'Difficile', power: 1.12, income: 1.25, react: 0.3,  smart: 1.0 },
+  hard:   { label: 'Difficile', power: 1.18, income: 1.3,  react: 0.3,  smart: 1.0 },
 };
 
 export function createAI(level = 'normal', seed = 1) {
@@ -26,6 +26,10 @@ export function aiThink(ai, g, o, dt, issue) {
   const myBase = baseXOf(o);
 
   if (canEvolve(p)) { issue({ c: 'evolve' }); return; }
+
+  // Posture : repli sous les tourelles seulement en situation critique (en retard d'un âge et base entamée)
+  const wantHold = g.players[1 - o].age > p.age && p.hp / p.hpMax < 0.35 && ai.cfg.smart >= 0.7;
+  if ((p.stance === 'hold') !== wantHold) { issue({ c: 'stance', v: wantHold ? 'hold' : 'advance' }); return; }
 
   const enemies = g.units.filter((u) => u.owner !== o);
   const mine = g.units.filter((u) => u.owner === o);
@@ -59,7 +63,7 @@ export function aiThink(ai, g, o, dt, issue) {
     return;
   }
 
-  if (p.up < C.UPGRADE_MAX && p.gold > C.upgradeCost(p.age, p.up) + costs[2] * 2 && rnd(ai) < ai.cfg.smart) {
+  if (p.up < C.UPGRADE_MAX && p.gold > C.upgradeCost(p.up) + costs[2] * 2 && rnd(ai) < ai.cfg.smart) {
     issue({ c: 'upgrade' });
     return;
   }

@@ -25,7 +25,7 @@ export function packSnap(s) {
       Math.floor(p.gold), Math.floor(p.xp), p.age, Math.ceil(p.hp), p.hpMax, p.slots,
       p.turrets.map((t) => (t ? t.age * 3 + t.k : -1)),
       p.queue.map((q) => [q.age * 3 + q.k, r1(q.t), r1(q.total)]),
-      Math.ceil(p.specialCd), p.kills, p.lost, p.up,
+      Math.ceil(p.specialCd), p.kills, p.lost, p.up, p.stance === 'hold' ? 1 : 0,
     ]),
     u: s.units.map(([id, owner, age, k, x, hpf, moving, lastAtk, lvl]) => [id, owner * 15 + age * 3 + k, Math.round(x * 20), Math.round(hpf * 100), moving, Math.round(lastAtk * 10), lvl]),
     j: s.proj.map(([id, kind, x, y, dx, dy]) => [id, KINDS.indexOf(kind), Math.round(x * 10), Math.round(y * 10), Math.round(dx), Math.round(dy)]),
@@ -38,8 +38,8 @@ export function packSnap(s) {
 export function unpackSnap(c) {
   return {
     t: c.t, over: !!c.o, winner: c.w,
-    players: c.p.map(([gold, xp, age, hp, hpMax, slots, turrets, queue, specialCd, kills, lost, up]) => ({
-      gold, xp, age, hp, hpMax, slots, specialCd, kills, lost, up,
+    players: c.p.map(([gold, xp, age, hp, hpMax, slots, turrets, queue, specialCd, kills, lost, up, hold]) => ({
+      gold, xp, age, hp, hpMax, slots, specialCd, kills, lost, up, stance: hold ? 'hold' : 'advance',
       turrets: turrets.map((v) => (v < 0 ? null : { age: Math.floor(v / 3), k: v % 3 })),
       queue: queue.map(([v, t, total]) => ({ age: Math.floor(v / 3), k: v % 3, t, total })),
     })),

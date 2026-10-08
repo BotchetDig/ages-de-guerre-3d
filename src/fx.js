@@ -44,8 +44,10 @@ class Shards {
   }
   update(dt) {
     const { p, v, r, rv, life, s, m, q, e, pv, sv } = this;
+    let any = false;
     for (let i = 0; i < this.max; i++) {
       if (life[i] <= 0) continue;
+      any = true;
       life[i] -= dt;
       const i3 = i * 3;
       v[i3 + 1] -= 18 * dt;
@@ -60,7 +62,9 @@ class Shards {
       m.compose(pv.set(p[i3], p[i3 + 1], p[i3 + 2]), q.setFromEuler(e), sv.set(sc, sc, sc));
       this.mesh.setMatrixAt(i, m);
     }
-    this.mesh.instanceMatrix.needsUpdate = true;
+    // Aucun éclat vivant : on évite de renvoyer 1600 matrices au GPU
+    if (any || this.wasAny) this.mesh.instanceMatrix.needsUpdate = true;
+    this.wasAny = any;
   }
 }
 

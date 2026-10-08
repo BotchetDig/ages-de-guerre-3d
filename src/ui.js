@@ -8,9 +8,9 @@ const $ = (s, r = document) => r.querySelector(s);
 export const KEYS = {
   unit0: 'Digit1', unit1: 'Digit2', unit2: 'Digit3',
   turret0: 'KeyQ', turret1: 'KeyW', turret2: 'KeyE',
-  slot: 'KeyR', sell: 'KeyS', upgrade: 'KeyT', evolve: 'KeyU', special: 'Space', cancel: 'KeyX',
+  slot: 'KeyR', sell: 'KeyS', upgrade: 'KeyT', evolve: 'KeyU', special: 'Space', cancel: 'KeyX', stance: 'KeyG',
 };
-const DEFAULT_LABELS = { Digit1: '1', Digit2: '2', Digit3: '3', KeyQ: 'Q', KeyW: 'W', KeyE: 'E', KeyR: 'R', KeyS: 'S', KeyT: 'T', KeyU: 'U', Space: 'Espace', KeyX: 'X', KeyF: 'F', KeyC: 'C', KeyH: 'H' };
+const DEFAULT_LABELS = { Digit1: '1', Digit2: '2', Digit3: '3', KeyQ: 'Q', KeyW: 'W', KeyE: 'E', KeyR: 'R', KeyS: 'S', KeyT: 'T', KeyU: 'U', Space: 'Espace', KeyX: 'X', KeyF: 'F', KeyC: 'C', KeyH: 'H', KeyG: 'G' };
 export const keyLabel = { ...DEFAULT_LABELS };
 if (/^fr/i.test(navigator.language)) Object.assign(keyLabel, { KeyQ: 'A', KeyW: 'Z' });
 
@@ -45,10 +45,11 @@ export function failReason(g, o, cmd) {
     }
     case 'slot': return p.slots >= 4 ? 'Tous les emplacements sont débloqués' : p.gold < C.SLOT_COSTS[p.slots] ? "Pas assez d'or" : null;
     case 'sell': return p.turrets.some(Boolean) ? null : 'Aucune tourelle à vendre';
-    case 'upgrade': return p.up >= C.UPGRADE_MAX ? 'Amélioration maximale' : p.gold < C.upgradeCost(p.age, p.up) ? "Pas assez d'or" : null;
+    case 'upgrade': return p.up >= C.UPGRADE_MAX ? 'Amélioration maximale' : p.gold < C.upgradeCost(p.up) ? "Pas assez d'or" : null;
     case 'special': return p.specialCd > 0 ? `Attaque spéciale prête dans ${Math.ceil(p.specialCd)} s` : null;
     case 'evolve': return p.age >= 4 ? 'Âge final atteint' : canEvolve(p) ? null : "Pas assez d'expérience";
     case 'cancel': return p.queue.length ? null : 'File vide';
+    case 'stance': return null;
   }
   return null;
 }
@@ -92,6 +93,7 @@ export class UI {
     $('#utils').innerHTML = `
       <button class="util" data-c="slot"><span class="key">${keyLabel[KEYS.slot]}</span><span class="ico">⊕</span><span class="lbl">Emplacement</span><span class="cost"><i class="coin"></i><b></b></span></button>
       <button class="util" data-c="sell"><span class="key">${keyLabel[KEYS.sell]}</span><span class="ico">⇩</span><span class="lbl">Vendre</span><span class="cost sub">50 %</span></button>
+      <button class="util" data-c="stance"><span class="key">${keyLabel[KEYS.stance]}</span><span class="ico stance-ico">⚔</span><span class="lbl stance-lbl">Attaque</span><span class="cost sub stance-sub">Avancer</span></button>
       <button class="util" data-c="upgrade"><span class="key">${keyLabel[KEYS.upgrade]}</span><span class="ico">▲</span><span class="lbl">Armée <em class="pips"></em></span><span class="cost"><i class="coin"></i><b></b></span></button>`;
     $('#special').innerHTML = `<span class="key">${keyLabel[KEYS.special]}</span><span class="ring"></span><span class="ico">☄</span><span class="lbl"></span>`;
     $('#evolve').innerHTML = `<span class="fill"></span><span class="lbl">ÉVOLUER</span><span class="key">${keyLabel[KEYS.evolve]}</span>`;
@@ -159,11 +161,16 @@ export class UI {
       this.set($('.cost b', b), 'text', fmt(s.cost));
       this.set(b, '.off', !!failReason(g, me, { c: 'turret', k }));
     }
-    const [slotB, sellB, upB] = $('#utils').children;
+    const [slotB, sellB, stanceB, upB] = $('#utils').children;
+    const hold = p.stance === 'hold';
+    this.set(stanceB, '.hold', hold);
+    this.set($('.stance-ico', stanceB), 'text', hold ? '🛡' : '⚔');
+    this.set($('.stance-lbl', stanceB), 'text', hold ? 'Défense' : 'Attaque');
+    this.set($('.stance-sub', stanceB), 'text', hold ? 'Tenir la ligne' : 'Avancer');
     this.set($('.cost b', slotB), 'text', p.slots >= 4 ? 'MAX' : fmt(C.SLOT_COSTS[p.slots]));
     this.set(slotB, '.off', !!failReason(g, me, { c: 'slot' }));
     this.set(sellB, '.off', !!failReason(g, me, { c: 'sell' }));
-    this.set($('.cost b', upB), 'text', p.up >= C.UPGRADE_MAX ? 'MAX' : fmt(C.upgradeCost(p.age, p.up)));
+    this.set($('.cost b', upB), 'text', p.up >= C.UPGRADE_MAX ? 'MAX' : fmt(C.upgradeCost(p.up)));
     this.set($('.pips', upB), 'text', '●'.repeat(p.up) + '○'.repeat(C.UPGRADE_MAX - p.up));
     this.set(upB, '.off', !!failReason(g, me, { c: 'upgrade' }));
 
@@ -184,7 +191,45 @@ export class UI {
     }
     this.set(q, 'html', items.join(''));
 
+    this.drawMinimap(g, me, extra.camX, extra.camHalf);
     this.updateTip(g, me);
+  }
+
+  // Mini-carte : voie, bases (PV), unités, zone visible ; clic/glisser = déplacer la caméra
+  drawMinimap(g, me, camX, camHalf) {
+    const cv = this.mini ??= $('#minimap');
+    const ctx = this.miniCtx ??= cv.getContext('2d');
+    const W = cv.width, H = cv.height, span = C.BASE_X + 4;
+    const X = (x) => ((x + span) / (2 * span)) * W;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(0, H / 2 - 2, W, 4);
+    for (let o = 0; o < 2; o++) {
+      const pl = g.players[o], bx = X(o === 0 ? -C.BASE_X : C.BASE_X);
+      ctx.fillStyle = o === 0 ? '#60a5fa' : '#ff5a4a';
+      const h = (H - 6) * Math.max(0, pl.hp / pl.hpMax);
+      ctx.globalAlpha = 0.35; ctx.fillRect(bx - 5, 3, 10, H - 6);
+      ctx.globalAlpha = 1; ctx.fillRect(bx - 5, H - 3 - h, 10, h);
+    }
+    for (const u of g.units) {
+      ctx.fillStyle = u.owner === 0 ? '#93c5fd' : '#ff9a8a';
+      const r = u.role === 'heavy' ? 3 : 2;
+      ctx.fillRect(X(u.x) - r, H / 2 - r - (u.owner === me ? 0 : 0), r * 2, r * 2);
+    }
+    ctx.strokeStyle = 'rgba(255,223,138,0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(X(camX - camHalf), 1, X(camX + camHalf) - X(camX - camHalf), H - 2);
+  }
+
+  banner(title, sub, kind = 'me') {
+    const b = $('#banner');
+    b.innerHTML = '';
+    const h = document.createElement('div'); h.className = 'bt'; h.textContent = title;
+    const p = document.createElement('div'); p.className = 'bs'; p.textContent = sub;
+    b.append(h, p);
+    b.className = 'show ' + kind;
+    clearTimeout(this.bannerT);
+    this.bannerT = setTimeout(() => (b.className = ''), 2600);
   }
 
   updateTip(g, me) {
@@ -203,6 +248,7 @@ export class UI {
       html = `<h4>${s.name}</h4><p>${{ single: 'Tir précis', splash: 'Dégâts de zone', rapid: 'Tir rapide' }[s.role]}</p>
         <ul><li>Dégâts <b>${fmt(s.dmg)}</b> / ${s.atkCd}s</li><li>Portée <b>${s.range}</b></li>${s.aoe ? `<li>Zone <b>${s.aoe}</b></li>` : ''}</ul>`;
     } else if (c === 'slot') html = `<h4>Emplacement de tourelle</h4><p>${p.slots}/4 débloqués</p>`;
+    else if (c === 'stance') html = `<h4>Posture de l'armée</h4><p>${p.stance === 'hold' ? 'Défense : tes unités tiennent la ligne près de ta base, sous la protection des tourelles.' : 'Attaque : tes unités avancent vers la base ennemie.'} Clique pour basculer.</p>`;
     else if (c === 'sell') html = `<h4>Vendre une tourelle</h4><p>Rend 50 % du prix. Vend la plus haute.</p>`;
     else if (c === 'upgrade') html = `<h4>Entraînement de l'armée</h4><p>+${C.UPGRADE_BONUS * 100} % PV et dégâts par niveau pour les unités produites ensuite. Niveau ${p.up}/${C.UPGRADE_MAX}.</p>`;
     else if (c === 'special') html = `<h4>${C.AGES[p.age].special.name}</h4><p>Frappe les unités ennemies. Recharge ${C.SPECIAL_CD} s.</p>`;

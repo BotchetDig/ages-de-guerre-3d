@@ -14,7 +14,7 @@
     <div id="hud" class="hidden">
       <div class="top">
         <div class="pl" id="p0"><div class="row"><span class="who"></span><span class="age"></span></div><div class="hp"><span class="hpfill"></span><span class="hptxt"></span></div></div>
-        <div class="mid"><div id="clock">0:00</div><div id="erosion"></div><div id="speed"></div></div>
+        <div class="mid"><div id="clock">0:00</div><canvas id="minimap" width="320" height="26" title="Clic : déplacer la caméra"></canvas><div id="erosion"></div><div id="speed"></div></div>
         <div class="pl right" id="p1"><div class="row"><span class="age"></span><span class="who"></span></div><div class="hp"><span class="hpfill"></span><span class="hptxt"></span></div></div>
       </div>
 
@@ -25,6 +25,7 @@
         <button id="evolve" data-c="evolve"></button>
       </div>
 
+      <div id="banner"></div>
       <div id="toast"></div>
       <div id="tip"></div>
 
@@ -85,6 +86,7 @@
         <div class="volumes">
           <label>Musique <input type="range" min="0" max="1" step="0.05" id="vol-music" /></label>
           <label>Effets <input type="range" min="0" max="1" step="0.05" id="vol-sfx" /></label>
+          <label>Qualité <select id="quality"><option value="auto">Auto</option><option value="high">Haute</option><option value="low">Basse</option></select></label>
         </div>
       </div>
       <div class="credit">Hommage fan-made à Age of War (Max Games, 2007)</div>
@@ -98,6 +100,7 @@
         <div class="volumes">
           <label>Musique <input type="range" min="0" max="1" step="0.05" id="vol-music2" /></label>
           <label>Effets <input type="range" min="0" max="1" step="0.05" id="vol-sfx2" /></label>
+          <label>Qualité <select id="quality2"><option value="auto">Auto</option><option value="high">Haute</option><option value="low">Basse</option></select></label>
         </div>
         <div class="stack">
           <button class="big" data-act="resume">Reprendre</button>

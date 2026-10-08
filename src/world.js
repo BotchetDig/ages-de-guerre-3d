@@ -60,11 +60,11 @@ function addWind(material, strength, refHeight) {
 
 // Ambiances par âge (couleurs du ciel, soleil, brouillard, herbe...)
 const PRESETS = [
-  { name: 'matin', top: 0x4a8fe0, hor: 0xffe2bd, fog: 0xcfdde6, sun: 0xfff0d8, sunI: 3.0, sunDir: [-0.55, 0.75, 0.45], hemiS: 0xc2dcff, hemiG: 0x6a7a42, hemiI: 1.0, grass: 0x7fbf4a, rim: 0xfff2dc, rimI: 0.35, stars: 0, exp: 1.0, env: 0.35, mtn: 0x3d6aa8, cloud: 0xffffff, water: 0x16608a },
-  { name: 'midi', top: 0x3f86e0, hor: 0xf7e8cc, fog: 0xd8e2e0, sun: 0xfff6e6, sunI: 3.3, sunDir: [-0.35, 0.9, 0.35], hemiS: 0xcfe4ff, hemiG: 0x748246, hemiI: 1.05, grass: 0x88bc4c, rim: 0xffffff, rimI: 0.3, stars: 0, exp: 1.0, env: 0.35, mtn: 0x4470a8, cloud: 0xffffff, water: 0x146a92 },
-  { name: 'après-midi', top: 0x5a86cc, hor: 0xffcf92, fog: 0xecd2ad, sun: 0xffcf96, sunI: 3.1, sunDir: [-0.7, 0.5, 0.45], hemiS: 0xc8d4f0, hemiG: 0x7a7a40, hemiI: 0.95, grass: 0x9cb84a, rim: 0xffd9a0, rimI: 0.45, stars: 0, exp: 1.02, env: 0.35, mtn: 0x7c7c98, cloud: 0xfff0dc, water: 0x1d5a78 },
-  { name: 'crépuscule', top: 0x3e4f86, hor: 0xff9a66, fog: 0xc9927c, sun: 0xff9c5c, sunI: 2.6, sunDir: [-0.8, 0.28, 0.5], hemiS: 0x9aa2d0, hemiG: 0x5e5038, hemiI: 0.85, grass: 0x7f9a46, rim: 0xffa070, rimI: 0.6, stars: 0.25, exp: 1.08, env: 0.3, mtn: 0x7a6a8a, cloud: 0xffc8a8, water: 0x1c3456 },
-  { name: 'nuit néon', top: 0x070b26, hor: 0x5a3596, fog: 0x2a2352, sun: 0xa8bcff, sunI: 1.5, sunDir: [-0.4, 0.6, 0.5], hemiS: 0x5a6ac0, hemiG: 0x1c1630, hemiI: 0.75, grass: 0x3c7266, rim: 0x9fb8ff, rimI: 0.8, stars: 1, exp: 1.18, env: 0.25, mtn: 0x3a3466, cloud: 0x8a7ab8, water: 0x141846 },
+  { name: 'matin', top: 0x4a8fe0, hor: 0xffe2bd, fog: 0xcfdde6, sun: 0xfff0d8, sunI: 3.0, sunDir: [-0.55, 0.75, 0.45], hemiS: 0xc2dcff, hemiG: 0x6a7a42, hemiI: 1.0, grass: 0x7fbf4a, rim: 0xfff2dc, rimI: 0.35, stars: 0, exp: 1.0, env: 0.35, mtn: 0x3d6aa8, cloud: 0xffffff, water: 0x16608a, foliage: 0xffffff },
+  { name: 'midi', top: 0x3f86e0, hor: 0xf7e8cc, fog: 0xd8e2e0, sun: 0xfff6e6, sunI: 3.3, sunDir: [-0.35, 0.9, 0.35], hemiS: 0xcfe4ff, hemiG: 0x748246, hemiI: 1.05, grass: 0x88bc4c, rim: 0xffffff, rimI: 0.3, stars: 0, exp: 1.0, env: 0.35, mtn: 0x4470a8, cloud: 0xffffff, water: 0x146a92, foliage: 0xffffff },
+  { name: 'après-midi', top: 0x5a86cc, hor: 0xffcf92, fog: 0xecd2ad, sun: 0xffcf96, sunI: 3.1, sunDir: [-0.7, 0.5, 0.45], hemiS: 0xc8d4f0, hemiG: 0x7a7a40, hemiI: 0.95, grass: 0x9cb84a, rim: 0xffd9a0, rimI: 0.45, stars: 0, exp: 1.02, env: 0.35, mtn: 0x7c7c98, cloud: 0xfff0dc, water: 0x1d5a78, foliage: 0xfff0d4 },
+  { name: 'crépuscule', top: 0x3e4f86, hor: 0xff9a66, fog: 0xc9927c, sun: 0xff9c5c, sunI: 2.6, sunDir: [-0.8, 0.28, 0.5], hemiS: 0x9aa2d0, hemiG: 0x5e5038, hemiI: 0.85, grass: 0x7f9a46, rim: 0xffa070, rimI: 0.6, stars: 0.25, exp: 1.08, env: 0.3, mtn: 0x7a6a8a, cloud: 0xffc8a8, water: 0x1c3456, foliage: 0xe8c0a8 },
+  { name: 'nuit néon', top: 0x070b26, hor: 0x5a3596, fog: 0x2a2352, sun: 0xa8bcff, sunI: 1.5, sunDir: [-0.4, 0.6, 0.5], hemiS: 0x5a6ac0, hemiG: 0x1c1630, hemiI: 0.75, grass: 0x3c7266, rim: 0x9fb8ff, rimI: 0.8, stars: 1, exp: 1.18, env: 0.25, mtn: 0x3a3466, cloud: 0x8a7ab8, water: 0x141846, foliage: 0x6a88b0 },
 ];
 
 export function createWorld(scene, renderer) {
@@ -74,7 +74,7 @@ export function createWorld(scene, renderer) {
     top: new THREE.Color(P.top), hor: new THREE.Color(P.hor), fog: new THREE.Color(P.fog),
     sun: new THREE.Color(P.sun), hemiS: new THREE.Color(P.hemiS), hemiG: new THREE.Color(P.hemiG),
     grass: new THREE.Color(P.grass), rim: new THREE.Color(P.rim), mtn: new THREE.Color(P.mtn),
-    cloud: new THREE.Color(P.cloud), water: new THREE.Color(P.water),
+    cloud: new THREE.Color(P.cloud), water: new THREE.Color(P.water), foliage: new THREE.Color(P.foliage),
     sunDir: new THREE.Vector3(...P.sunDir).normalize(),
     sunI: P.sunI, hemiI: P.hemiI, rimI: P.rimI, stars: P.stars, exp: P.exp, env: P.env,
   };
@@ -141,7 +141,7 @@ export function createWorld(scene, renderer) {
   tg.rotateX(-Math.PI / 2);
   const pos = tg.attributes.position;
   const colors = [];
-  const grassA = new THREE.Color(0xffffff), grassB = new THREE.Color(0xd2dcc4), dirt = new THREE.Color(0xc79a62), dirtB = new THREE.Color(0xa97c4c), rock = new THREE.Color(0x9c9484), sand = new THREE.Color(0xd8c49a);
+  const grassA = new THREE.Color(0xffffff), grassB = new THREE.Color(0xd2dcc4), dirt = new THREE.Color(0xc79a62), dirtB = new THREE.Color(0xa97c4c), rock = new THREE.Color(0x9c9484), sand = new THREE.Color(0xa89068);
   const c = new THREE.Color();
   const isGrass = [];
   for (let i = 0; i < pos.count; i++) {
@@ -202,7 +202,7 @@ export function createWorld(scene, renderer) {
           vec3 col = mix(deep, mix(skyTop, sky, 0.3), 0.06 + fres * 0.28);
           vec3 h = normalize(normalize(sunDir) + v);
           float spec = pow(max(dot(n, h), 0.0), 220.0);
-          col += sunCol * spec * 3.5;
+          col += sunCol * min(spec * 1.1, 0.9); // reflets du soleil, plafonnés pour ne pas déclencher le bloom
           float edge = smoothstep(${(RIVER_HALF + 0.5).toFixed(1)}, ${(RIVER_HALF - 0.6).toFixed(1)}, abs(vW.z - (${RIVER_Z.toFixed(1)})));
           float foam = (1.0 - edge) * (0.5 + 0.5*sin(vW.x*3.0 + time*2.0));
           col = mix(col, vec3(0.9), foam * 0.35);
@@ -275,6 +275,8 @@ export function createWorld(scene, renderer) {
   grass.receiveShadow = true;
   grass.frustumCulled = false;
   scene.add(grass);
+  world.grass = grass;
+  world.grassFull = ng;
 
   // ----- Fleurs -----
   const flowerG = new THREE.IcosahedronGeometry(0.07, 0);
@@ -395,19 +397,22 @@ export function createWorld(scene, renderer) {
 
     // Transition douce vers l'ambiance de l'âge courant
     const k = Math.min(1, dt * 0.7);
-    for (const key of ['top', 'hor', 'fog', 'sun', 'hemiS', 'hemiG', 'grass', 'rim', 'mtn', 'cloud', 'water']) cur[key].lerp(tc.set(target[key]), k);
+    for (const key of ['top', 'hor', 'fog', 'sun', 'hemiS', 'hemiG', 'grass', 'rim', 'mtn', 'cloud', 'water', 'foliage']) cur[key].lerp(tc.set(target[key]), k);
     cur.sunDir.lerp(tv.set(...target.sunDir).normalize(), k).normalize();
     for (const key of ['sunI', 'hemiI', 'rimI', 'stars', 'exp', 'env']) cur[key] += (target[key] - cur[key]) * k;
     scene.fog.color.copy(cur.fog);
     hemi.color.copy(cur.hemiS); hemi.groundColor.copy(cur.hemiG); hemi.intensity = cur.hemiI;
     sun.color.copy(cur.sun); sun.intensity = cur.sunI;
     skyUni.stars.value = cur.stars;
+    world.night = cur.stars;
     mtnNear.color.copy(cur.mtn).lerp(cur.hor, 0.12);
     mtnFar.color.copy(cur.mtn).lerp(cur.hor, 0.38);
     cloudMat.color.copy(cur.cloud); cloudMat.emissive.copy(cur.cloud);
     rimUniforms.rimColor.value.copy(cur.rim);
     rimUniforms.rimStrength.value = cur.rimI;
     grassMat.color.copy(cur.grass);
+    // Végétation teintée par l'ambiance (bleutée la nuit, dorée au crépuscule)
+    for (const im of [pines, rounds, bushes, flowers]) im.material.color.copy(cur.foliage);
     renderer.toneMappingExposure = cur.exp;
     scene.environmentIntensity = cur.env;
     dustMat.color.copy(cur.stars > 0.5 ? tc.set(0x9fffd0) : tc.set(0xfff1c0));
