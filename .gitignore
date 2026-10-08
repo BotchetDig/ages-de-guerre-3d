@@ -1,0 +1,6 @@
+node_modules/
+dist/
+tools/shots/
+# Sources Meshy brutes (60 Mo) : les versions jeu sont dans public/models/
+meshy/
+models_src/

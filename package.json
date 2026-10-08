@@ -1,0 +1,22 @@
+{
+  "name": "age-of-war-3d",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "balance": "node tools/balance.mjs",
+    "artifact": "vite build --mode artifact && node tools/artifact.mjs"
+  },
+  "dependencies": {
+    "n8ao": "^1.9.4",
+    "peerjs": "^1.5.4",
+    "postprocessing": "^6.36.4",
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.10"
+  }
+}

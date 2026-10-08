@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Âges de Guerre 3D</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="app">
+    <div id="view"></div>
+
+    <div id="hud" class="hidden">
+      <div class="top">
+        <div class="pl" id="p0"><div class="row"><span class="who"></span><span class="age"></span></div><div class="hp"><span class="hpfill"></span><span class="hptxt"></span></div></div>
+        <div class="mid"><div id="clock">0:00</div><div id="erosion"></div><div id="speed"></div></div>
+        <div class="pl right" id="p1"><div class="row"><span class="age"></span><span class="who"></span></div><div class="hp"><span class="hpfill"></span><span class="hptxt"></span></div></div>
+      </div>
+
+      <div class="res">
+        <div id="gold" class="chip"><i class="coin"></i><b>0</b></div>
+        <div id="pop" class="chip" title="Population"><span class="ico">👥</span><b>0/18</b></div>
+        <div id="xp"><span class="fill"></span><b></b></div>
+        <button id="evolve" data-c="evolve"></button>
+      </div>
+
+      <div id="toast"></div>
+      <div id="tip"></div>
+
+      <div class="bottom">
+        <div id="queue" title="Clic : annuler la dernière unité"></div>
+        <div class="bar">
+          <div class="group"><div class="gl">Unités</div><div id="units" class="cards"></div></div>
+          <div class="group"><div class="gl">Tourelles</div><div id="turrets" class="cards"></div></div>
+          <div class="group"><div class="gl">Base</div><div id="utils" class="utils"></div></div>
+          <button id="special" data-c="special"></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="menu" class="overlay">
+      <div class="panel title-panel">
+        <h1>Âges de Guerre<small>3D</small></h1>
+        <p class="sub">De la préhistoire au futur : fais évoluer ta civilisation et rase la base adverse.</p>
+        <div id="menu-main" class="stack">
+          <button class="big" data-act="solo">Jouer en solo</button>
+          <button class="big" data-act="host">Créer une partie à deux</button>
+          <button class="big hidden" data-act="lobby" id="btn-lobby">Rejoindre une partie</button>
+          <button class="ghost" data-act="help">Commandes</button>
+        </div>
+        <div id="menu-solo" class="stack hidden">
+          <div class="label">Difficulté de l'IA</div>
+          <div class="seg">
+            <button data-diff="easy">Facile</button>
+            <button data-diff="normal" class="sel">Normal</button>
+            <button data-diff="hard">Difficile</button>
+          </div>
+          <button class="big" data-act="start-solo">Lancer la partie</button>
+          <button class="ghost" data-act="back">Retour</button>
+        </div>
+        <div id="menu-online" class="stack hidden">
+          <div class="status" id="net-status">Création du salon…</div>
+          <div class="link-row hidden" id="link-row">
+            <input id="invite" readonly />
+            <button id="copy">Copier le lien</button>
+          </div>
+          <p class="hint">Envoie ce lien à ton adversaire. La partie démarre dès qu'il le rejoint.</p>
+          <button class="ghost" data-act="cancel-online">Annuler</button>
+        </div>
+        <div id="menu-join" class="stack hidden">
+          <div class="status" id="join-status">Connexion à la partie…</div>
+          <button class="ghost" data-act="cancel-online">Annuler</button>
+        </div>
+        <div id="menu-lobby" class="stack hidden">
+          <div class="label">Parties en attente</div>
+          <div id="lobby-list" class="lobby"></div>
+          <p class="hint">Ton adversaire doit avoir ouvert ce jeu et cliqué sur « Créer une partie à deux ».</p>
+          <button class="ghost" data-act="back">Retour</button>
+        </div>
+        <div id="menu-help" class="stack hidden">
+          <div id="help-keys" class="keys"></div>
+          <button class="ghost" data-act="back">Retour</button>
+        </div>
+        <div class="volumes">
+          <label>Musique <input type="range" min="0" max="1" step="0.05" id="vol-music" /></label>
+          <label>Effets <input type="range" min="0" max="1" step="0.05" id="vol-sfx" /></label>
+        </div>
+      </div>
+      <div class="credit">Hommage fan-made à Age of War (Max Games, 2007)</div>
+    </div>
+
+    <div id="pause" class="overlay hidden">
+      <div class="panel">
+        <h2>Pause</h2>
+        <p class="hint" id="pause-note"></p>
+        <div class="keys" id="pause-keys"></div>
+        <div class="volumes">
+          <label>Musique <input type="range" min="0" max="1" step="0.05" id="vol-music2" /></label>
+          <label>Effets <input type="range" min="0" max="1" step="0.05" id="vol-sfx2" /></label>
+        </div>
+        <div class="stack">
+          <button class="big" data-act="resume">Reprendre</button>
+          <button class="ghost" data-act="quit">Quitter la partie</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="end" class="overlay hidden">
+      <div class="panel">
+        <h2 id="end-title">Victoire</h2>
+        <div id="end-stats" class="stats"></div>
+        <div class="stack">
+          <button class="big" data-act="again">Rejouer</button>
+          <button class="ghost" data-act="quit">Menu principal</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
