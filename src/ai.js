@@ -1,6 +1,9 @@
 // IA adverse : émet des commandes comme un joueur humain.
 import * as C from './config.js';
-import { canEvolve, baseXOf, dirOf, popOf } from './sim.js';
+import { canEvolve, baseXOf, dirOf, popOf, heroBusy } from './sim.js';
+
+// Préférences de doctrine de l'IA (la plus haute l'emporte, avec un peu de hasard)
+const DOCTRINE_PREF = { veteran: 8, eco: 7, fury: 6, fort: 5, loot: 4, scholar: 4, artillery: 3, medic: 3 };
 
 export const DIFFICULTY = {
   easy:   { label: 'Facile',    power: 0.8,  income: 0.75, react: 0.9,  smart: 0.4 },
@@ -26,6 +29,12 @@ export function aiThink(ai, g, o, dt, issue) {
   const myBase = baseXOf(o);
 
   if (canEvolve(p)) { issue({ c: 'evolve' }); return; }
+  if (p.choice) {
+    const [a, b] = p.choice;
+    const sa = DOCTRINE_PREF[a] + rnd(ai) * 3, sb = DOCTRINE_PREF[b] + rnd(ai) * 3;
+    issue({ c: 'doctrine', i: sa >= sb ? 0 : 1 });
+    return;
+  }
 
   // Posture : repli sous les tourelles seulement en situation critique (en retard d'un âge et base entamée)
   const wantHold = g.players[1 - o].age > p.age && p.hp / p.hpMax < 0.35 && ai.cfg.smart >= 0.7;
@@ -68,6 +77,12 @@ export function aiThink(ai, g, o, dt, issue) {
     return;
   }
   if (popOf(g, o) >= C.POP_CAP) return;
+  // Héros : dès qu'on peut se le permettre sans vider la caisse
+  const heroCost = C.unitStats(p.age, C.HERO_K).cost;
+  if (!heroBusy(g, o) && p.gold > heroCost * 1.25 && p.queue.length < 3 && rnd(ai) < 0.4 + ai.cfg.smart * 0.4) {
+    issue({ c: 'unit', k: C.HERO_K });
+    return;
+  }
   if (p.queue.length >= (p.gold > costs[2] * 3 ? 5 : 3)) return;
   // Composition : un tank devant, des tireurs derrière
   const ranged = mine.filter((u) => u.role === 'ranged').length;

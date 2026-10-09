@@ -1,6 +1,6 @@
 import './style.css';
 import * as C from './config.js';
-import { createGame, step, applyCommand, snapshot, applySnapshot } from './sim.js';
+import { createGame, step, applyCommand, snapshot, applySnapshot, startGame as seedDoctrines } from './sim.js';
 import { createAI, aiThink, DIFFICULTY } from './ai.js';
 import { GameView } from './view.js';
 import { UI, KEYS, keyLabel, failReason, readKeyboardLayout } from './ui.js';
@@ -65,6 +65,10 @@ function issue(cmd) {
 // Événements de la simulation → vue 3D + bannières d'interface
 function handleEvents(ev, g) {
   for (const e of ev) {
+    if (e.e === 'relic') ui.toast('Une relique tombe du ciel : la première unité qui la touche la remporte !', 'info');
+    if (e.e === 'relicTaken') ui.toast(e.o === S.me ? `Relique capturée : +${e.gold} or${e.xp ? `, +${e.xp} XP` : ''}` : "L'adversaire a capturé la relique", e.o === S.me ? 'info' : 'warn');
+    if (e.e === 'doctrine' && e.o === S.me) ui.toast(`Doctrine adoptée : ${C.DOCTRINES[e.id].name}`, 'info');
+    if (e.e === 'die' && e.k === C.HERO_K) ui.toast(e.o === S.me ? 'Ton héros est tombé !' : 'Le héros ennemi est tombé !', e.o === S.me ? 'warn' : 'info');
     if (e.e === 'stance' && e.o === S.me) ui.toast(e.v === 'hold' ? 'Défense : tes unités tiennent la ligne près de ta base' : 'Attaque : tes unités avancent', 'info');
     if (e.e === 'evolve') {
       const name = C.AGES[e.age].name;
@@ -81,6 +85,7 @@ function startGame(mode) {
   S.mode = mode;
   S.g = createGame();
   S.g.rng = (Math.random() * 1e9) | 0;
+  if (mode !== 'guest') seedDoctrines(S.g);
   S.me = mode === 'guest' ? 1 : 0;
   S.paused = false;
   S.speed = 1;
@@ -128,6 +133,7 @@ function toMenu(msg) {
   S.mode = 'menu';
   S.ended = false;
   S.g = createGame();
+  seedDoctrines(S.g);
   demoAIs = [createAI('normal', 11), createAI('normal', 23)];
   view.reset(0);
   view.cam.tdist = 36;
@@ -215,7 +221,7 @@ function frame(now) {
       S.acc -= C.TICK;
       for (let o = 0; o < 2; o++) aiThink(demoAIs[o], g, o, C.TICK, (cmd) => applyCommand(g, o, cmd));
       step(g, C.TICK);
-      if (g.over) { S.g = createGame(); view.reset(0); view.cam.tdist = 36; }
+      if (g.over) { S.g = createGame(); seedDoctrines(S.g); view.reset(0); view.cam.tdist = 36; }
     }
     view.handle(g.events.filter((e) => e.e !== 'hit' && e.e !== 'die'), g);
     g.events.length = 0;
@@ -268,12 +274,13 @@ document.addEventListener('mouseleave', () => (mouse.inside = false));
 window.addEventListener('blur', () => held.clear());
 
 const ACTIONS = {
-  [KEYS.unit0]: { c: 'unit', k: 0 }, [KEYS.unit1]: { c: 'unit', k: 1 }, [KEYS.unit2]: { c: 'unit', k: 2 },
+  [KEYS.unit0]: { c: 'unit', k: 0 }, [KEYS.unit1]: { c: 'unit', k: 1 }, [KEYS.unit2]: { c: 'unit', k: 2 }, [KEYS.unit3]: { c: 'unit', k: 3 },
+  [KEYS.doc0]: { c: 'doctrine', i: 0 }, [KEYS.doc1]: { c: 'doctrine', i: 1 },
   [KEYS.turret0]: { c: 'turret', k: 0 }, [KEYS.turret1]: { c: 'turret', k: 1 }, [KEYS.turret2]: { c: 'turret', k: 2 },
   [KEYS.slot]: { c: 'slot' }, [KEYS.sell]: { c: 'sell' }, [KEYS.upgrade]: { c: 'upgrade' },
   [KEYS.evolve]: { c: 'evolve' }, [KEYS.special]: { c: 'special' }, [KEYS.cancel]: { c: 'cancel' }, [KEYS.stance]: { c: 'stance' },
 };
-const NUMPAD = { Numpad1: KEYS.unit0, Numpad2: KEYS.unit1, Numpad3: KEYS.unit2 };
+const NUMPAD = { Numpad1: KEYS.unit0, Numpad2: KEYS.unit1, Numpad3: KEYS.unit2, Numpad4: KEYS.unit3 };
 
 window.addEventListener('keydown', (e) => {
   audio.unlock();
@@ -334,6 +341,8 @@ function openLobby() {
 
 const HELP = [
   [`${keyLabel[KEYS.unit0]} ${keyLabel[KEYS.unit1]} ${keyLabel[KEYS.unit2]}`, 'Produire une unité (mêlée, distance, lourde)'],
+  [keyLabel[KEYS.unit3], 'Héros (unique, aura +25 % dégâts)'],
+  [`${keyLabel[KEYS.doc0]} / ${keyLabel[KEYS.doc1]}`, 'Choisir une doctrine (au début et à chaque évolution)'],
   [`${keyLabel[KEYS.turret0]} ${keyLabel[KEYS.turret1]} ${keyLabel[KEYS.turret2]}`, 'Construire une tourelle'],
   [keyLabel[KEYS.slot], 'Acheter un emplacement de tourelle'],
   [keyLabel[KEYS.sell], 'Vendre la dernière tourelle'],

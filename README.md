@@ -18,6 +18,8 @@ npm run dev
 | A Z E (AZERTY) / Q W E | Construire une tourelle |
 | R / S | Acheter un emplacement / vendre une tourelle |
 | T | Améliorer l'armée (prix fixe par niveau) |
+| 4 | Héros (unique, aura +25 % dégâts aux alliés) |
+| B / N | Choisir une doctrine (début de partie et chaque évolution) |
 | G | Posture : attaquer / tenir la ligne |
 | U | Évoluer |
 | Espace | Attaque spéciale |

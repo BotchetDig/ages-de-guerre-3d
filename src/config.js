@@ -13,7 +13,7 @@ export const SLOT_COSTS = [0, 300, 1000, 3000];
 export const COST_MULT = [1, 3.4, 11, 36, 115];
 export const POWER_MULT = [1, 3.0, 9.0, 27, 80];
 export const TRICKLE = [8, 22, 60, 170, 480];  // or/s passif par âge (source principale de revenus)
-export const XP_TRICKLE = [4.2, 16.5, 58, 200, 0]; // XP/s passive : la progression ne dépend pas que du rythme des combats
+export const XP_TRICKLE = [5.2, 20.6, 72, 250, 0]; // XP/s passive : la progression ne dépend pas que du rythme des combats
 export const KILL_GOLD = 0.6;                 // × coût de l'unité tuée
 export const KILL_XP = 0.45;
 export const SPEND_XP = 0.18;                 // XP par pièce d'or dépensée (unités, tourelles)
@@ -42,7 +42,12 @@ const ROLE = {
   melee:  { cost: 15,  hp: 55,  dmg: 12, range: 0.5, cd: 1.0, speed: 3.6, build: 0.6, r: 0.45, hitY: 1.0 },
   ranged: { cost: 25,  hp: 38,  dmg: 8,  range: 7.5, cd: 1.3, speed: 3.3, build: 0.8, r: 0.45, hitY: 1.0 },
   heavy:  { cost: 100, hp: 250, dmg: 30, range: 0.6, cd: 1.6, speed: 2.5, build: 1.8, r: 1.1,  hitY: 1.6 },
+  // Héros : unique (un seul en vie ou en production), aura +25 % dégâts aux alliés proches
+  hero:   { cost: 260, hp: 620, dmg: 38, range: 0.7, cd: 0.9, speed: 3.0, build: 4.0, r: 0.6,  hitY: 1.4 },
 };
+export const HERO_K = 3;
+export const HERO_AURA_RANGE = 5;
+export const HERO_AURA_BONUS = 0.25;
 
 const TURRET_ROLE = {
   single: { cost: 90,  dmg: 24, cd: 1.0,  range: 12,  aoe: 0 },
@@ -73,11 +78,12 @@ export const PROJ = {
 
 export const AGES = [
   {
-    id: 'prehistoric', name: 'Préhistoire', xpNext: 1000, baseHp: 600,
+    id: 'prehistoric', name: 'Préhistoire', xpNext: 1500, baseHp: 600,
     units: [
       { name: 'Cogneur',  role: 'melee' },
       { name: 'Frondeur', role: 'ranged', proj: 'stone' },
       { name: 'Mammouth', role: 'heavy' },
+      { name: 'Chef de clan', role: 'hero' },
     ],
     turrets: [
       { name: 'Lance-pierres', role: 'single', proj: 'stone' },
@@ -87,11 +93,12 @@ export const AGES = [
     special: { name: 'Pluie de météores', proj: 'meteor', count: 14, dmg: 45, aoe: 2.6 },
   },
   {
-    id: 'medieval', name: 'Médiéval', xpNext: 4000, baseHp: 1500,
+    id: 'medieval', name: 'Médiéval', xpNext: 6000, baseHp: 1500,
     units: [
       { name: 'Épéiste',   role: 'melee' },
       { name: 'Archer',    role: 'ranged', proj: 'arrow' },
       { name: 'Chevalier', role: 'heavy', speed: 3.1 },
+      { name: 'Paladin', role: 'hero' },
     ],
     turrets: [
       { name: 'Baliste',     role: 'single', proj: 'bolt' },
@@ -101,11 +108,12 @@ export const AGES = [
     special: { name: 'Volée de flèches', proj: 'volley', count: 30, dmg: 22, aoe: 1.4 },
   },
   {
-    id: 'gunpowder', name: 'Âge de la poudre', xpNext: 14000, baseHp: 4200,
+    id: 'gunpowder', name: 'Âge de la poudre', xpNext: 21000, baseHp: 4200,
     units: [
       { name: 'Grenadier',    role: 'melee' },
       { name: 'Mousquetaire', role: 'ranged', proj: 'bullet', range: 8.5 },
       { name: 'Canon',        role: 'heavy', proj: 'ball', range: 6, speed: 2.0, hp: 200, dmg: 34 },
+      { name: 'Capitaine', role: 'hero', proj: 'bullet', range: 9.5, hp: 480, cd: 0.8 },
     ],
     turrets: [
       { name: 'Couleuvrine', role: 'single', proj: 'ball' },
@@ -115,11 +123,12 @@ export const AGES = [
     special: { name: "Barrage d'artillerie", proj: 'ball', count: 16, dmg: 40, aoe: 2.4 },
   },
   {
-    id: 'modern', name: 'Ère moderne', xpNext: 48000, baseHp: 12000,
+    id: 'modern', name: 'Ère moderne', xpNext: 72000, baseHp: 12000,
     units: [
       { name: 'Commando', role: 'melee' },
       { name: 'Fusilier', role: 'ranged', proj: 'bullet', range: 9 },
       { name: 'Char',     role: 'heavy', proj: 'shell', range: 6.5, speed: 2.3, hp: 280 },
+      { name: "Commando d'élite", role: 'hero', proj: 'bullet', range: 10, hp: 470, cd: 0.45, dmg: 22 },
     ],
     turrets: [
       { name: 'Canon AT',        role: 'single', proj: 'shell' },
@@ -134,6 +143,7 @@ export const AGES = [
       { name: 'Lame plasma', role: 'melee' },
       { name: 'Blaster',     role: 'ranged', proj: 'laser', range: 9 },
       { name: 'Méca',        role: 'heavy', proj: 'plasma', range: 4.5, speed: 2.2, hp: 300 },
+      { name: 'Titan', role: 'hero', hp: 700, dmg: 46 },
     ],
     turrets: [
       { name: 'Laser',         role: 'single', proj: 'laser' },
@@ -143,6 +153,25 @@ export const AGES = [
     special: { name: 'Laser orbital', proj: 'orbital', count: 10, dmg: 80, aoe: 3.2 },
   },
 ];
+
+// ---------- Doctrines : une spécialisation au choix (parmi 2) à chaque évolution ----------
+export const DOCTRINES = {
+  eco:       { name: 'Économie',      icon: '💰', desc: '+35 % de revenu passif' },
+  loot:      { name: 'Pillage',       icon: '🗡️', desc: "+70 % d'or par ennemi tué" },
+  fort:      { name: 'Fortification', icon: '🏰', desc: '+35 % PV de base, tourelles +30 % dégâts' },
+  fury:      { name: 'Fureur',        icon: '🔥', desc: "Unités : +18 % vitesse d'attaque et de marche" },
+  medic:     { name: 'Médecins',      icon: '✚',  desc: 'Unités : régénèrent 2 % PV/s' },
+  scholar:   { name: 'Érudits',       icon: '📜', desc: "+45 % d'XP passive" },
+  artillery: { name: 'Artillerie',    icon: '☄️', desc: 'Attaque spéciale : −35 % recharge, +40 % dégâts' },
+  veteran:   { name: 'Vétérans',      icon: '🎖️', desc: 'Unités : +20 % PV et dégâts' },
+};
+export const DOCTRINE_PICK_TIME = 25; // au-delà, la première carte est choisie automatiquement
+
+// ---------- Reliques : coffre largué au milieu du front, capturé par la première unité qui le touche ----------
+export const RELIC_FIRST = 60;     // premier largage (s)
+export const RELIC_EVERY = 80;     // intervalle entre largages
+export const RELIC_FALL = 2.5;     // durée de la chute
+export const relicReward = (age) => ({ gold: Math.round(180 * COST_MULT[age]), xpFrac: 0.12 });
 
 // Emplacements de tourelles relatifs à la base (dx orienté vers l'ennemi).
 export const TURRET_SLOTS = [

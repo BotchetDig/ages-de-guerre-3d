@@ -1,16 +1,16 @@
 // Interface HTML : HUD, cartes de production, menus. Mise à jour par diff pour éviter de toucher le DOM inutilement.
 import * as C from './config.js';
-import { canEvolve, popOf, erosion } from './sim.js';
+import { canEvolve, popOf, erosion, heroBusy } from './sim.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 
 // Raccourcis : codes physiques (fonctionne en AZERTY comme en QWERTY), libellés lus depuis la disposition réelle.
 export const KEYS = {
-  unit0: 'Digit1', unit1: 'Digit2', unit2: 'Digit3',
+  unit0: 'Digit1', unit1: 'Digit2', unit2: 'Digit3', unit3: 'Digit4', doc0: 'KeyB', doc1: 'KeyN',
   turret0: 'KeyQ', turret1: 'KeyW', turret2: 'KeyE',
   slot: 'KeyR', sell: 'KeyS', upgrade: 'KeyT', evolve: 'KeyU', special: 'Space', cancel: 'KeyX', stance: 'KeyG',
 };
-const DEFAULT_LABELS = { Digit1: '1', Digit2: '2', Digit3: '3', KeyQ: 'Q', KeyW: 'W', KeyE: 'E', KeyR: 'R', KeyS: 'S', KeyT: 'T', KeyU: 'U', Space: 'Espace', KeyX: 'X', KeyF: 'F', KeyC: 'C', KeyH: 'H', KeyG: 'G' };
+const DEFAULT_LABELS = { Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4', KeyB: 'B', KeyN: 'N', KeyQ: 'Q', KeyW: 'W', KeyE: 'E', KeyR: 'R', KeyS: 'S', KeyT: 'T', KeyU: 'U', Space: 'Espace', KeyX: 'X', KeyF: 'F', KeyC: 'C', KeyH: 'H', KeyG: 'G' };
 export const keyLabel = { ...DEFAULT_LABELS };
 if (/^fr/i.test(navigator.language)) Object.assign(keyLabel, { KeyQ: 'A', KeyW: 'Z' });
 
@@ -33,6 +33,7 @@ export function failReason(g, o, cmd) {
   switch (cmd.c) {
     case 'unit': {
       const s = C.unitStats(p.age, cmd.k);
+      if (cmd.k === C.HERO_K && heroBusy(g, o)) return 'Un seul héros à la fois';
       if (popOf(g, o) >= C.POP_CAP) return 'Population maximale atteinte';
       if (p.queue.length >= C.QUEUE_MAX) return 'File de production pleine';
       if (p.gold < s.cost) return "Pas assez d'or";
@@ -50,6 +51,7 @@ export function failReason(g, o, cmd) {
     case 'evolve': return p.age >= 4 ? 'Âge final atteint' : canEvolve(p) ? null : "Pas assez d'expérience";
     case 'cancel': return p.queue.length ? null : 'File vide';
     case 'stance': return null;
+    case 'doctrine': return p.choice ? null : 'Aucune doctrine à choisir';
   }
   return null;
 }
@@ -88,7 +90,7 @@ export class UI {
         <span class="cost"><i class="coin"></i><b></b></span>
         <span class="cd"></span>
       </button>`;
-    $('#units').innerHTML = [0, 1, 2].map((k) => card('unit', k, KEYS['unit' + k])).join('');
+    $('#units').innerHTML = [0, 1, 2, 3].map((k) => card('unit', k, KEYS['unit' + k])).join('');
     $('#turrets').innerHTML = [0, 1, 2].map((k) => card('turret', k, KEYS['turret' + k])).join('');
     $('#utils').innerHTML = `
       <button class="util" data-c="slot"><span class="key">${keyLabel[KEYS.slot]}</span><span class="ico">⊕</span><span class="lbl">Emplacement</span><span class="cost"><i class="coin"></i><b></b></span></button>
@@ -125,6 +127,8 @@ export class UI {
       this.set($('.hpfill', el), 'width', (pl.hp / pl.hpMax) * 100 + '%');
       this.set($('.hptxt', el), 'text', `${fmt(pl.hp)} / ${fmt(pl.hpMax)}`);
       this.set(el, '.low', pl.hp / pl.hpMax < 0.25);
+      const docs = (pl.doctrines ?? []).map((id) => C.DOCTRINES[id]);
+      this.set($('.docs', el), 'html', docs.map((d) => `<span title="${d.name} : ${d.desc}">${d.icon}</span>`).join(''));
     }
     this.set($('#clock'), 'text', time(g.t));
     const ero = erosion(g);
@@ -192,6 +196,7 @@ export class UI {
     }
     this.set(q, 'html', items.join(''));
 
+    this.updateDoctrine(p);
     this.drawMinimap(g, me, extra.camX, extra.camHalf);
     this.updateTip(g, me);
   }
@@ -217,9 +222,36 @@ export class UI {
       const r = u.role === 'heavy' ? 3 : 2;
       ctx.fillRect(X(u.x) - r, H / 2 - r - (u.owner === me ? 0 : 0), r * 2, r * 2);
     }
+    if (g.relic) {
+      const rx = X(g.relic.x);
+      ctx.fillStyle = g.relic.fall > 0 ? 'rgba(255,216,74,0.5)' : '#ffd84a';
+      ctx.beginPath(); ctx.moveTo(rx, 2); ctx.lineTo(rx + 5, H / 2); ctx.lineTo(rx, H - 2); ctx.lineTo(rx - 5, H / 2); ctx.closePath(); ctx.fill();
+    }
     ctx.strokeStyle = 'rgba(255,223,138,0.9)';
     ctx.lineWidth = 1.5;
     ctx.strokeRect(X(camX - camHalf), 1, X(camX + camHalf) - X(camX - camHalf), H - 2);
+  }
+
+  updateDoctrine(p) {
+    const box = $('#doctrine');
+    const key = p.choice ? p.choice.join('|') : '';
+    this.set(box, '.hidden', !p.choice);
+    if (!p.choice) return;
+    this.set($('.dt b', box), 'text', `${Math.ceil(p.choiceT ?? 0)} s`);
+    if (this.docKey === key) return;
+    this.docKey = key;
+    const wrap = $('.dcards', box);
+    wrap.replaceChildren();
+    p.choice.forEach((id, i) => {
+      const d = C.DOCTRINES[id];
+      const b = document.createElement('button');
+      b.className = 'dcard';
+      b.innerHTML = `<span class="key">${keyLabel[KEYS['doc' + i]]}</span><span class="di">${d.icon}</span><span class="dn"></span><span class="dd"></span>`;
+      b.querySelector('.dn').textContent = d.name;
+      b.querySelector('.dd').textContent = d.desc;
+      b.addEventListener('click', () => this.issue({ c: 'doctrine', i }));
+      wrap.appendChild(b);
+    });
   }
 
   banner(title, sub, kind = 'me') {
@@ -242,7 +274,7 @@ export class UI {
     if (c === 'unit') {
       const s = C.unitStats(p.age, k);
       const m = 1 + p.up * C.UPGRADE_BONUS;
-      html = `<h4>${s.name}</h4><p>${{ melee: 'Corps à corps', ranged: 'Distance', heavy: 'Lourd' }[s.role]}</p>
+      html = `<h4>${s.name}</h4><p>${{ melee: 'Corps à corps', ranged: 'Distance', heavy: 'Lourd', hero: 'Héros unique : +25 % de dégâts aux alliés dans son aura' }[s.role]}</p>
         <ul><li>PV <b>${fmt(s.hp * m)}</b></li><li>Dégâts <b>${fmt(s.dmg * m)}</b> / ${s.atkCd}s</li><li>Portée <b>${s.range.toFixed(1)}</b></li><li>Production <b>${s.build}s</b></li></ul>`;
     } else if (c === 'turret') {
       const s = C.turretStats(p.age, k);

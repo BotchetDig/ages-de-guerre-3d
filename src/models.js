@@ -181,7 +181,66 @@ const HATS = {
 
 // ---------- Unités ----------
 
+// ---------- Héros (k = 3) : plus grands, cape d'équipe, finitions dorées ----------
+const GOLD = 0xf2c14e;
+function addCape(root, team, s) {
+  const torso = root.getObjectByName('torso');
+  const cape = pivot('cape', -0.2 * s, 0.66 * s, 0, torso);
+  mesh(box(0.05, 1.0 * s, 0.6 * s), mat(TEAM[team]), -0.02, -0.5 * s, 0, cape);
+  mesh(box(0.06, 0.08 * s, 0.62 * s), mat(GOLD, { metal: 0.6, rough: 0.35 }), -0.02, -0.02, 0, cape);
+}
+function buildHero(age, team) {
+  const T = TEAM[team], G = TEAM_GLOW[team];
+  const gold = mat(GOLD, { metal: 0.7, rough: 0.3 });
+  let h;
+  switch (age) {
+    case 0:
+      h = humanoid({
+        scale: 1.3, body: 0x8a5a30, belt: GOLD, legs: 0x6b4423, arms: SKIN, boots: 0x5a3a1e,
+        hat: (hd, s) => { HATS.hair(0x2a1a10)(hd, s); for (const z of [-0.18, 0.18]) { const c = mesh(cone(0.06 * s, 0.35 * s, 5), mat(0xf3ead2), 0, 0.2 * s, z * s, hd); c.rotation.x = z > 0 ? -0.6 : 0.6; } },
+        weapon: (hd, s) => { mesh(cyl(0.09, 0.05, 1.1, 5), mat(WOOD), 0.45, -0.05, 0, hd).rotation.z = -Math.PI / 2.4; const k = mesh(dode(0.22), mat(DARKWOOD), 0.9, 0.12, 0, hd); for (let i = 0; i < 4; i++) mesh(cone(0.05, 0.18, 4), mat(0xd8d0c0), 0.9 + Math.cos(i * 1.6) * 0.2, 0.12 + Math.sin(i * 1.6) * 0.2, 0, hd).rotation.z = i * 1.6 - Math.PI / 2; },
+      });
+      mesh(new THREE.TorusGeometry(0.22, 0.03, 4, 12), gold, 0.02, 0.62 * 1.3, 0, h.getObjectByName('torso')).rotation.x = Math.PI / 2;
+      break;
+    case 1:
+      h = humanoid({
+        scale: 1.3, body: 0xd6dde6, tabard: T, belt: GOLD, legs: 0xb8c0ca, arms: 0xd6dde6, boots: 0x8a929c,
+        hat: (hd, s) => { HATS.helmet(hd, s); mesh(box(0.06, 0.3 * s, 0.06), gold, 0, 0.42 * s, 0, hd); },
+        weapon: (hd) => { const b = mesh(box(0.08, 1.2, 0.05), glow(0xffe7a0, 2.2), 0.55, 0.08, 0, hd); b.rotation.z = -Math.PI / 2.2; mesh(box(0.1, 0.08, 0.4), gold, 0, 0, 0, hd); },
+        offhand: (hd) => { const sh = mesh(cyl(0.42, 0.42, 0.07, 8), mat(T), 0.14, 0.05, 0, hd); sh.rotation.z = Math.PI / 2; mesh(cyl(0.18, 0.18, 0.08, 8), gold, 0.18, 0.05, 0, hd).rotation.z = Math.PI / 2; },
+      });
+      break;
+    case 2:
+      h = humanoid({
+        scale: 1.3, body: T, belt: GOLD, legs: WHITE, boots: DARK,
+        hat: (hd, s) => { const b = mesh(cone(0.42 * s, 0.25 * s, 3), mat(0x1f1f24), 0, 0.17 * s, 0, hd); b.rotation.y = Math.PI / 2; mesh(box(0.05, 0.12 * s, 0.05), gold, 0.05, 0.3 * s, 0, hd); },
+        weapon: (hd) => W.musket(hd, false),
+      });
+      for (const z of [-0.36, 0.36]) mesh(box(0.22, 0.06, 0.2), gold, 0, 0.62 * 1.3, z * 1.3, h.getObjectByName('torso'));
+      break;
+    case 3:
+      h = humanoid({
+        scale: 1.3, body: 0x2a2d33, belt: 0x1a1c20, tabard: T, legs: 0x2a2d33, arms: 0x2a2d33, boots: DARK, visor: 0xff4040, pack: 0x3a3f45,
+        hat: (hd, s) => mesh(cyl(0.22 * s, 0.24 * s, 0.1 * s, 8), mat(T), 0, 0.15 * s, 0, hd).rotation.z = 0.2,
+        weapon: (hd) => { const g = new THREE.Group(); hd.add(g); g.rotation.z = -Math.PI / 2.05; mesh(box(0.13, 0.75, 0.1), mat(0x30343b, { metal: 0.5 }), 0, 0.3, 0, g); mesh(cyl(0.04, 0.04, 0.6, 6), mat(DARK, { metal: 0.6 }), 0, 0.95, 0, g); mesh(box(0.06, 0.2, 0.06), mat(0x30343b), 0.08, 0.4, 0, g); },
+      });
+      break;
+    default:
+      h = humanoid({
+        scale: 2.0, body: WHITE, belt: GOLD, tabard: T, legs: 0x3a3f48, arms: 0x3a3f48, head: WHITE, visor: G, boots: DARK,
+        weapon: (hd) => { const b = mesh(box(0.1, 1.6, 0.08), glow(G, 4.5), 0.7, 0.1, 0, hd); b.rotation.z = -Math.PI / 2.2; },
+        offhand: (hd) => mesh(ico(0.2, 1), glow(G, 4), 0.1, 0, 0, hd),
+      });
+      mesh(ico(0.18, 1), glow(G, 4), 0.2, 0.4 * 2, 0, h.getObjectByName('torso'));
+  }
+  addCape(h, team, age === 4 ? 2 : 1.3);
+  h.userData.hero = true;
+  h.userData.height = (age === 4 ? 2 : 1.3) * 2.0;
+  return h;
+}
+
 function buildUnit(age, k, team) {
+  if (k === 3) return buildHero(age, team);
   const T = TEAM[team];
   switch (age * 3 + k) {
     case 0: return humanoid({ body: 0xb07a4a, belt: T, legs: 0x7a4a24, arms: SKIN, head: SKIN, hat: HATS.hair(0x3a2516), weapon: W.club, boots: SKIN });
@@ -265,7 +324,7 @@ export function makeUnit(age, k, team) {
   const proto = unitProto.get(key);
   const root = proto.clone(true);
   root.userData = { ...proto.userData };
-  const names = ['hips', 'torso', 'head', 'legL', 'legR', 'armL', 'armR', 'body', 'leg0', 'leg1', 'leg2', 'leg3', 'trunk', 'barrel', 'turret', 'rider'];
+  const names = ['hips', 'torso', 'head', 'legL', 'legR', 'armL', 'armR', 'body', 'leg0', 'leg1', 'leg2', 'leg3', 'trunk', 'barrel', 'turret', 'rider', 'cape'];
   const parts = {};
   for (const n of names) parts[n] = root.getObjectByName(n);
   parts.wheels = [];
@@ -294,6 +353,7 @@ export function animateUnit(root, phase, moving, atk, t) {
     P.hips.position.y = P.hips.userData.y0 ?? (P.hips.userData.y0 = P.hips.position.y);
     P.hips.position.y = P.hips.userData.y0 + (moving ? Math.abs(Math.cos(phase)) * 0.06 * (mech ? 2 : 1) : Math.sin(t * 2) * 0.012);
     P.torso.rotation.z = -swing * 0.25 + (moving ? 0.06 : 0);
+    if (P.cape) P.cape.rotation.z = moving ? 0.35 + Math.sin(phase * 2) * 0.12 : 0.08 + Math.sin(t * 1.7) * 0.05;
   } else if (rig === 'quad') {
     for (let i = 0; i < 4; i++) P['leg' + i].rotation.z = (i === 0 || i === 3 ? sw : -sw) * 0.45;
     P.body.position.y = (P.body.userData.y0 ?? (P.body.userData.y0 = P.body.position.y)) + (moving ? Math.abs(Math.cos(phase)) * 0.08 : 0);
@@ -474,6 +534,22 @@ export function makeTurret(age, k, team) {
     for (const z of [-0.18, 0, 0.18]) mesh(cyl(0.05, 0.05, 1.0, 5), bm, 0.65, 0.02, z, head).rotation.z = -Math.PI / 2;
   }
   if (age === 0 && k === 1) mesh(dode(0.22), mat(0x8a8a8a), 0.1, 0.5, 0, head);
+  return g;
+}
+
+// ---------- Relique ----------
+export function makeRelic() {
+  const g = new THREE.Group();
+  const gold = mat(GOLD, { metal: 0.8, rough: 0.25, emissive: 0x6a4a10, ei: 1 });
+  const chest = new THREE.Group();
+  chest.name = 'chest';
+  g.add(chest);
+  mesh(box(1.0, 0.55, 0.7), mat(0x7a4a24), 0, 0.28, 0, chest);
+  const lid = pivot('lid', -0.5, 0.56, 0, chest);
+  mesh(box(1.0, 0.22, 0.7), mat(0x8b5a2b), 0.5, 0.11, 0, lid);
+  for (const x of [-0.35, 0.35]) mesh(box(0.08, 0.8, 0.74), gold, x, 0.4, 0, chest);
+  mesh(box(0.16, 0.18, 0.06), gold, 0, 0.5, 0.37, chest);
+  mesh(ico(0.18, 1), glow(0xffd84a, 4), 0, 0.85, 0, chest).name = 'gem';
   return g;
 }
 

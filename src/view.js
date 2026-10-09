@@ -8,11 +8,11 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { BASE_X, AGES, SPAWN_OFFSET } from './config.js';
+import { BASE_X, AGES, SPAWN_OFFSET, RELIC_FALL, HERO_AURA_RANGE } from './config.js';
 import { baseXOf, dirOf, turretPos } from './sim.js';
 import { createWorld } from './world.js';
 import { FX } from './fx.js';
-import { makeUnit, animateUnit, makeBase, makeTurret, makeProjectile, makeSlotPlatform, registerGltfBase, TEAM, TEAM_GLOW } from './models.js';
+import { makeUnit, animateUnit, makeBase, makeTurret, makeProjectile, makeSlotPlatform, registerGltfBase, makeRelic, TEAM, TEAM_GLOW } from './models.js';
 
 // Passe finale : tilt-shift (effet maquette), aberration chromatique légère, étalonnage, vignette, grain, flash.
 const GradeShader = {
@@ -109,6 +109,8 @@ export class GameView {
     this.flashT = 0;
     this.killers = new Map();
 
+    this.auraGeo = new THREE.RingGeometry(HERO_AURA_RANGE - 0.25, HERO_AURA_RANGE, 48).rotateX(-Math.PI / 2);
+    this.auraInner = new THREE.CircleGeometry(1.1, 24).rotateX(-Math.PI / 2);
     this.hpGeo = new THREE.PlaneGeometry(1, 0.13);
     this.hpFgGeo = new THREE.PlaneGeometry(1, 0.13).translate(0.5, 0, 0);
     this.hpBg = new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.6, depthWrite: false });
@@ -190,8 +192,9 @@ export class GameView {
 
   reset(me) {
     this.me = me;
-    for (const v of this.units.values()) this.scene.remove(v.root, v.bar);
+    for (const v of this.units.values()) this.scene.remove(v.root, v.bar, v.root.userData.aura ?? v.bar);
     for (const d of this.dying) this.scene.remove(d.root);
+    if (this.relic) { this.scene.remove(this.relic.obj, this.relic.beam); this.relic = null; }
     for (const p of this.projs.values()) this.scene.remove(p.obj);
     this.units.clear(); this.projs.clear(); this.dying = [];
     for (let o = 0; o < 2; o++) {
@@ -278,7 +281,18 @@ export class GameView {
         bar.add(fg);
         bar.renderOrder = 10;
         this.scene.add(bar);
-        const w = u.role === 'heavy' ? 1.6 : 0.9;
+        const w = u.role === 'heavy' || u.role === 'hero' ? 1.6 : 0.9;
+        if (root.userData.hero) {
+          const aura = new THREE.Group();
+          const am = new THREE.MeshBasicMaterial({ color: TEAM_GLOW[u.owner], transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false });
+          aura.add(new THREE.Mesh(this.auraGeo, am));
+          aura.add(new THREE.Mesh(this.auraInner, new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false })));
+          aura.position.set(u.x, 0.05, z);
+          this.scene.add(aura);
+          root.userData.aura = aura;
+          this.fx.rings.spawn(u.x, 0, z, 6, 0xffd84a, 0.8);
+          this.fx.flashes.flash(u.x, 2, z + 1, 0xffd84a, 40, 0.5, 14);
+        }
         v = { root, bar, fg, w, x: u.x, z, phase: Math.random() * 6, born: 0, lastAtk: u.lastAtk, atk: 0, owner: u.owner, age: u.age, k: u.k, role: u.role, h: root.userData.height };
         this.units.set(u.id, v);
         this.fx.glow.burst(u.x, 1, z, 10, { color: TEAM_GLOW[u.owner], speed: 2.5, size: 0.6, life: 0.5, drag: 3 });
@@ -286,6 +300,12 @@ export class GameView {
       }
       v.x += (u.x - v.x) * Math.min(1, dt * 14);
       v.root.position.x = v.x;
+      const aura = v.root.userData.aura;
+      if (aura) {
+        aura.position.x = v.x;
+        aura.children[0].material.opacity = 0.22 + Math.sin(this.time * 3) * 0.08;
+        if (Math.random() < dt * 6) this.fx.glow.emit(v.x + (Math.random() - 0.5) * 1.4, 0.2, v.z + (Math.random() - 0.5) * 1.4, { color: 0xffd84a, size: 0.35, size1: 0, life: 0.9, vy: 1.4, drag: 0.5 });
+      }
       v.moving = u.moving;
       v.born = Math.min(1, v.born + dt * 5);
       const s = v.born < 1 ? 1 - Math.pow(1 - v.born, 3) * 1 + Math.sin(v.born * Math.PI) * 0.15 : 1;
@@ -315,6 +335,7 @@ export class GameView {
       if (seen.has(id)) continue;
       this.units.delete(id);
       this.scene.remove(v.bar);
+      if (v.root.userData.aura) this.scene.remove(v.root.userData.aura);
       this.dying.push({ ...v, t: 0 });
     }
   }
@@ -334,13 +355,50 @@ export class GameView {
       // Éclatement en shards aux couleurs du modèle
       const colors = [];
       d.root.traverse((o) => { if (o.isMesh && colors.length < 6) colors.push(o.material.color.getHex()); });
-      const big = d.role === 'heavy' ? 1.8 : 1;
+      const big = d.role === 'heavy' || d.role === 'hero' ? 1.8 : 1;
+      if (d.role === 'hero') {
+        this.fx.explosion(d.x, 1.2, d.z, 1.2, 0xffd84a);
+        this.fx.shards.burst(d.x, 1.5, d.z, 30, [0xf2c14e, 0xffffff, TEAM[d.owner]], 7, 1.3, 2.2, 8);
+      }
       this.fx.shards.burst(d.x, d.h * 0.45, d.z, Math.round(16 * big), colors, 4.5 * big, 1.1 * big, 1.8, 5);
       this.fx.glow.burst(d.x, d.h * 0.4, d.z, 8, { color: TEAM_GLOW[d.owner], speed: 3, size: 0.5, life: 0.4 });
       if (d.role === 'heavy' && d.age >= 2) this.fx.explosion(d.x, 0.8, d.z, 0.7);
       this.scene.remove(d.root);
       return false;
     });
+  }
+
+  syncRelic(g, dt) {
+    const r = g.relic;
+    if (!r) {
+      if (this.relic) { this.scene.remove(this.relic.obj, this.relic.beam); this.relic = null; }
+      return;
+    }
+    if (!this.relic) {
+      const obj = makeRelic();
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.9, 40, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+      beam.position.set(r.x, 20, 0);
+      this.scene.add(obj, beam);
+      this.relic = { obj, beam, landed: false, y: 25 };
+    }
+    const R = this.relic;
+    const fall = Math.max(0, r.fall);
+    const ty = (fall / RELIC_FALL) * 25;
+    R.y += (ty - R.y) * Math.min(1, dt * 12);
+    R.obj.position.set(r.x, R.y + (fall > 0 ? 0 : 0.05 + Math.sin(this.time * 2) * 0.04), 0.6);
+    R.obj.rotation.y = fall > 0 ? this.time * 3 : Math.sin(this.time) * 0.2;
+    R.beam.position.x = r.x;
+    R.beam.material.opacity = 0.12 + Math.sin(this.time * 4) * 0.05;
+    if (fall > 0) this.fx.glow.emit(r.x, R.y + 0.5, 0.6, { color: 0xffd84a, size: 1.2, life: 0.4 });
+    else if (!R.landed) {
+      R.landed = true;
+      this.fx.rings.spawn(r.x, 0, 0.6, 4, 0xffd84a, 0.6);
+      this.fx.dust(r.x, 0.6, 14);
+      this.fx.shake = Math.max(this.fx.shake, 0.18);
+      this.audio.play('base_hit', r.x, 0.8);
+    } else if (Math.random() < dt * 8) {
+      this.fx.glow.emit(r.x + (Math.random() - 0.5), 0.9, 0.6, { color: 0xfff0a0, size: 0.3, size1: 0, life: 0.8, vy: 1.6 });
+    }
   }
 
   syncProjectiles(g, dt) {
@@ -500,6 +558,19 @@ export class GameView {
         A.play(e.e === 'sell' ? 'sell' : 'build', pos.x, 0.7);
         break;
       }
+      case 'relic':
+        A.play('special', e.x, 0.6);
+        break;
+      case 'relicTaken':
+        F.glow.burst(e.x, 1, 0.6, 40, { color: [0xffd84a, 0xffffff], color1: 0xff9020, speed: 7, size: 0.7, life: 0.8, drag: 2, upBias: 2 });
+        F.shards.burst(e.x, 1, 0.6, 24, [0xf2c14e, 0xffe08a, 0xb07a10], 6, 0.9, 2, 8);
+        F.floaters.spawn(e.x, 3, 0.6, '+' + e.gold, 'gold', 1.4);
+        F.flashes.flash(e.x, 2, 1, 0xffd84a, 50, 0.4, 14);
+        A.play('evolve', e.x, 0.6);
+        break;
+      case 'doctrine':
+        if (e.o === this.me) A.play('upgrade', this.cam.x, 0.7);
+        break;
       case 'over':
         for (let i = 0; i < 6; i++) setTimeout(() => this.fx.explosion(baseXOf(1 - e.winner) + (Math.random() - 0.5) * 4, 1 + Math.random() * 5, (Math.random() - 0.5) * 2, 1.4), i * 220);
         break;
@@ -514,6 +585,7 @@ export class GameView {
     this.syncUnits(g, dt);
     this.updateDying(dt);
     this.syncProjectiles(g, dt);
+    this.syncRelic(g, dt);
 
     for (let o = 0; o < 2; o++) {
       const b = this.bases[o];

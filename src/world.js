@@ -60,11 +60,11 @@ function addWind(material, strength, refHeight) {
 
 // Ambiances par âge (couleurs du ciel, soleil, brouillard, herbe...)
 const PRESETS = [
-  { name: 'matin', top: 0x4a8fe0, hor: 0xffe2bd, fog: 0xcfdde6, sun: 0xfff0d8, sunI: 3.0, sunDir: [-0.55, 0.75, 0.45], hemiS: 0xc2dcff, hemiG: 0x6a7a42, hemiI: 1.0, grass: 0x7fbf4a, rim: 0xfff2dc, rimI: 0.35, stars: 0, exp: 1.0, env: 0.35, mtn: 0x3d6aa8, cloud: 0xffffff, water: 0x16608a, foliage: 0xffffff },
-  { name: 'midi', top: 0x3f86e0, hor: 0xf7e8cc, fog: 0xd8e2e0, sun: 0xfff6e6, sunI: 3.3, sunDir: [-0.35, 0.9, 0.35], hemiS: 0xcfe4ff, hemiG: 0x748246, hemiI: 1.05, grass: 0x88bc4c, rim: 0xffffff, rimI: 0.3, stars: 0, exp: 1.0, env: 0.35, mtn: 0x4470a8, cloud: 0xffffff, water: 0x146a92, foliage: 0xffffff },
-  { name: 'après-midi', top: 0x5a86cc, hor: 0xffcf92, fog: 0xecd2ad, sun: 0xffcf96, sunI: 3.1, sunDir: [-0.7, 0.5, 0.45], hemiS: 0xc8d4f0, hemiG: 0x7a7a40, hemiI: 0.95, grass: 0x9cb84a, rim: 0xffd9a0, rimI: 0.45, stars: 0, exp: 1.02, env: 0.35, mtn: 0x7c7c98, cloud: 0xfff0dc, water: 0x1d5a78, foliage: 0xfff0d4 },
-  { name: 'crépuscule', top: 0x3e4f86, hor: 0xff9a66, fog: 0xc9927c, sun: 0xff9c5c, sunI: 2.6, sunDir: [-0.8, 0.28, 0.5], hemiS: 0x9aa2d0, hemiG: 0x5e5038, hemiI: 0.85, grass: 0x7f9a46, rim: 0xffa070, rimI: 0.6, stars: 0.25, exp: 1.08, env: 0.3, mtn: 0x7a6a8a, cloud: 0xffc8a8, water: 0x1c3456, foliage: 0xe8c0a8 },
-  { name: 'nuit néon', top: 0x070b26, hor: 0x5a3596, fog: 0x2a2352, sun: 0xa8bcff, sunI: 1.5, sunDir: [-0.4, 0.6, 0.5], hemiS: 0x5a6ac0, hemiG: 0x1c1630, hemiI: 0.75, grass: 0x3c7266, rim: 0x9fb8ff, rimI: 0.8, stars: 1, exp: 1.18, env: 0.25, mtn: 0x3a3466, cloud: 0x8a7ab8, water: 0x141846, foliage: 0x6a88b0 },
+  { name: 'matin', top: 0x4a8fe0, hor: 0xffe2bd, fog: 0xcfdde6, sun: 0xfff0d8, sunI: 3.0, sunDir: [-0.55, 0.75, 0.45], hemiS: 0xc2dcff, hemiG: 0x6a7a42, hemiI: 1.0, grass: 0x7fbf4a, rim: 0xfff2dc, rimI: 0.35, stars: 0, exp: 1.0, env: 0.35, mtn: 0x3d6aa8, cloud: 0xffffff, water: 0x16608a, foliage: 0xffffff, snow: 0, rain: 0 },
+  { name: 'midi', top: 0x3f86e0, hor: 0xf7e8cc, fog: 0xd8e2e0, sun: 0xfff6e6, sunI: 3.3, sunDir: [-0.35, 0.9, 0.35], hemiS: 0xcfe4ff, hemiG: 0x748246, hemiI: 1.05, grass: 0x88bc4c, rim: 0xffffff, rimI: 0.3, stars: 0, exp: 1.0, env: 0.35, mtn: 0x4470a8, cloud: 0xffffff, water: 0x146a92, foliage: 0xffffff, snow: 1, rain: 0 },
+  { name: 'après-midi', top: 0x5a86cc, hor: 0xffcf92, fog: 0xecd2ad, sun: 0xffcf96, sunI: 3.1, sunDir: [-0.7, 0.5, 0.45], hemiS: 0xc8d4f0, hemiG: 0x7a7a40, hemiI: 0.95, grass: 0x9cb84a, rim: 0xffd9a0, rimI: 0.45, stars: 0, exp: 1.02, env: 0.35, mtn: 0x7c7c98, cloud: 0xfff0dc, water: 0x1d5a78, foliage: 0xfff0d4, snow: 0, rain: 0 },
+  { name: 'crépuscule', top: 0x3e4f86, hor: 0xff9a66, fog: 0xc9927c, sun: 0xff9c5c, sunI: 2.6, sunDir: [-0.8, 0.28, 0.5], hemiS: 0x9aa2d0, hemiG: 0x5e5038, hemiI: 0.85, grass: 0x7f9a46, rim: 0xffa070, rimI: 0.6, stars: 0.25, exp: 1.08, env: 0.3, mtn: 0x7a6a8a, cloud: 0xffc8a8, water: 0x1c3456, foliage: 0xe8c0a8, snow: 0, rain: 1 },
+  { name: 'nuit néon', top: 0x070b26, hor: 0x5a3596, fog: 0x2a2352, sun: 0xa8bcff, sunI: 1.5, sunDir: [-0.4, 0.6, 0.5], hemiS: 0x5a6ac0, hemiG: 0x1c1630, hemiI: 0.75, grass: 0x3c7266, rim: 0x9fb8ff, rimI: 0.8, stars: 1, exp: 1.18, env: 0.25, mtn: 0x3a3466, cloud: 0x8a7ab8, water: 0x141846, foliage: 0x6a88b0, snow: 0, rain: 0 },
 ];
 
 export function createWorld(scene, renderer) {
@@ -76,7 +76,7 @@ export function createWorld(scene, renderer) {
     grass: new THREE.Color(P.grass), rim: new THREE.Color(P.rim), mtn: new THREE.Color(P.mtn),
     cloud: new THREE.Color(P.cloud), water: new THREE.Color(P.water), foliage: new THREE.Color(P.foliage),
     sunDir: new THREE.Vector3(...P.sunDir).normalize(),
-    sunI: P.sunI, hemiI: P.hemiI, rimI: P.rimI, stars: P.stars, exp: P.exp, env: P.env,
+    sunI: P.sunI, hemiI: P.hemiI, rimI: P.rimI, stars: P.stars, exp: P.exp, env: P.env, snow: 0, rain: 0,
   };
   let target = PRESETS[0];
 
@@ -378,11 +378,64 @@ export function createWorld(scene, renderer) {
   const dust = new THREE.Points(dg, dustMat);
   scene.add(dust);
 
+  // ----- Météo (autour de la caméra) -----
+  const SN = 1400, RN = 1600;
+  const snowG = new THREE.BufferGeometry();
+  const snowP = new Float32Array(SN * 3);
+  for (let k = 0; k < SN; k++) { snowP[k * 3] = (Math.random() - 0.5) * 70; snowP[k * 3 + 1] = Math.random() * 22; snowP[k * 3 + 2] = (Math.random() - 0.5) * 30 - 2; }
+  snowG.setAttribute('position', new THREE.BufferAttribute(snowP, 3));
+  const flakeMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.24, transparent: true, opacity: 0, depthWrite: false });
+  const snow = new THREE.Points(snowG, flakeMat);
+  snow.frustumCulled = false;
+  scene.add(snow);
+  const rainG = new THREE.BufferGeometry();
+  const rainP = new Float32Array(RN * 6);
+  for (let k = 0; k < RN; k++) {
+    const x = (Math.random() - 0.5) * 70, y = Math.random() * 22, z = (Math.random() - 0.5) * 30 - 2;
+    rainP.set([x, y, z, x - 0.08, y - 0.7, z], k * 6);
+  }
+  rainG.setAttribute('position', new THREE.BufferAttribute(rainP, 3));
+  const rainMat = new THREE.LineBasicMaterial({ color: 0xaac4e0, transparent: true, opacity: 0, depthWrite: false });
+  const rain = new THREE.LineSegments(rainG, rainMat);
+  rain.frustumCulled = false;
+  scene.add(rain);
+  let weatherX = 0;
+  const updateWeather = (dt, t, camX) => {
+    snow.visible = cur.snow > 0.02;
+    rain.visible = cur.rain > 0.02;
+    flakeMat.opacity = cur.snow * 0.85;
+    rainMat.opacity = cur.rain * 0.45;
+    const shift = camX - weatherX;
+    weatherX = camX;
+    if (snow.visible) {
+      for (let k = 0; k < SN; k++) {
+        let x = snowP[k * 3] + Math.sin(t * 0.8 + k) * 0.01 + 0.3 * dt, y = snowP[k * 3 + 1] - 1.4 * dt;
+        if (y < 0) y += 22;
+        x -= shift * 0; // les flocons restent dans le repère monde ; on les recycle autour de la caméra
+        if (x - camX > 35) x -= 70; else if (x - camX < -35) x += 70;
+        snowP[k * 3] = x; snowP[k * 3 + 1] = y;
+      }
+      snowG.attributes.position.needsUpdate = true;
+    }
+    if (rain.visible) {
+      for (let k = 0; k < RN; k++) {
+        const o = k * 6;
+        let y = rainP[o + 1] - 24 * dt, x = rainP[o] - 1.5 * dt;
+        if (y < 0) y += 22;
+        if (x - camX > 35) x -= 70; else if (x - camX < -35) x += 70;
+        rainP[o] = x; rainP[o + 1] = y; rainP[o + 3] = x - 0.08; rainP[o + 4] = y - 0.7;
+      }
+      rainG.attributes.position.needsUpdate = true;
+    }
+  };
+
   world.setAge = (age) => { target = PRESETS[age]; };
 
   const tc = new THREE.Color(), tv = new THREE.Vector3();
   world.update = (dt, t, camX) => {
     windUniforms.uTime.value = t;
+    updateWeather(dt, t, camX);
+    windUniforms.uWind.value = 1 + cur.rain * 0.8 + cur.snow * 0.3;
     for (const cl of clouds) {
       cl.position.x += cl.userData.v * dt;
       if (cl.position.x > 150) cl.position.x = -150;
@@ -399,7 +452,7 @@ export function createWorld(scene, renderer) {
     const k = Math.min(1, dt * 0.7);
     for (const key of ['top', 'hor', 'fog', 'sun', 'hemiS', 'hemiG', 'grass', 'rim', 'mtn', 'cloud', 'water', 'foliage']) cur[key].lerp(tc.set(target[key]), k);
     cur.sunDir.lerp(tv.set(...target.sunDir).normalize(), k).normalize();
-    for (const key of ['sunI', 'hemiI', 'rimI', 'stars', 'exp', 'env']) cur[key] += (target[key] - cur[key]) * k;
+    for (const key of ['sunI', 'hemiI', 'rimI', 'stars', 'exp', 'env', 'snow', 'rain']) cur[key] += (target[key] - cur[key]) * k;
     scene.fog.color.copy(cur.fog);
     hemi.color.copy(cur.hemiS); hemi.groundColor.copy(cur.hemiG); hemi.intensity = cur.hemiI;
     sun.color.copy(cur.sun); sun.intensity = cur.sunI;

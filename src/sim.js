@@ -16,16 +16,58 @@ function newPlayer(i) {
     queue: [], slots: 1, turrets: [null, null, null, null],
     specialCd: 10, incomeMult: 1, powerMult: 1, up: 0, kills: 0, lost: 0,
     stance: 'advance', // 'advance' | 'hold' (tenir la ligne près de la base)
+    doctrines: [], choice: null, choiceT: 0, m: mods([]),
   };
 }
+
+// Effets cumulés des doctrines choisies
+export function mods(doctrines) {
+  const has = (id) => doctrines.includes(id);
+  return {
+    income: has('eco') ? 1.35 : 1, loot: has('loot') ? 1.7 : 1,
+    baseHp: has('fort') ? 1.35 : 1, turretDmg: has('fort') ? 1.3 : 1,
+    fury: has('fury') ? 1.18 : 1, regen: has('medic') ? 0.02 : 0,
+    xp: has('scholar') ? 1.45 : 1, specCd: has('artillery') ? 0.65 : 1, specDmg: has('artillery') ? 1.4 : 1,
+    vet: has('veteran') ? 1.2 : 1,
+  };
+}
+
+function offerDoctrines(g, p) {
+  const pool = Object.keys(C.DOCTRINES).filter((id) => !p.doctrines.includes(id));
+  if (pool.length < 2) return;
+  const a = pool.splice(Math.floor(rand(g) * pool.length), 1)[0];
+  const b = pool[Math.floor(rand(g) * pool.length)];
+  p.choice = [a, b];
+  p.choiceT = C.DOCTRINE_PICK_TIME;
+  g.events.push({ e: 'offer', o: p.i, choice: p.choice });
+}
+
+function chooseDoctrine(g, p, i) {
+  const id = p.choice?.[i];
+  if (!id) return false;
+  p.doctrines.push(id);
+  p.choice = null;
+  p.m = mods(p.doctrines);
+  if (id === 'fort') { p.hpMax = Math.round(p.hpMax * 1.35); p.hp = Math.round(p.hp * 1.35); }
+  g.events.push({ e: 'doctrine', o: p.i, id });
+  return true;
+}
+
+export const heroOf = (g, o) => g.units.find((u) => u.owner === o && u.k === C.HERO_K && !u.dead) ?? null;
+export const heroBusy = (g, o) => !!heroOf(g, o) || g.players[o].queue.some((q) => q.k === C.HERO_K);
 
 export function createGame() {
   return {
     t: 0, tick: 0, nextId: 1, over: false, winner: -1,
     players: [newPlayer(0), newPlayer(1)],
     units: [], projectiles: [], strikes: [], events: [],
-    rng: 12345,
+    rng: 12345, relic: null, relicT: C.RELIC_FIRST,
   };
+}
+
+// Première doctrine offerte au début de la partie (après le choix de la graine aléatoire)
+export function startGame(g) {
+  for (const p of g.players) offerDoctrines(g, p);
 }
 
 function rand(g) {
@@ -53,8 +95,10 @@ export function applyCommand(g, o, cmd) {
   const p = g.players[o];
   switch (cmd.c) {
     case 'unit': {
+      if (!(cmd.k >= 0 && cmd.k <= C.HERO_K)) return false;
       const s = C.unitStats(p.age, cmd.k);
       if (p.queue.length >= C.QUEUE_MAX || p.gold < s.cost || popOf(g, o) >= C.POP_CAP) return false;
+      if (cmd.k === C.HERO_K && heroBusy(g, o)) return false;
       p.gold -= s.cost;
       p.xp += s.cost * C.SPEND_XP;
       p.queue.push({ age: p.age, k: cmd.k, t: s.build, total: s.build });
@@ -99,6 +143,7 @@ export function applyCommand(g, o, cmd) {
       g.events.push({ e: 'upgrade', o, lvl: p.up });
       return true;
     }
+    case 'doctrine': return chooseDoctrine(g, p, cmd.i);
     case 'stance': {
       p.stance = cmd.v ?? (p.stance === 'hold' ? 'advance' : 'hold');
       g.events.push({ e: 'stance', o, v: p.stance });
@@ -114,9 +159,9 @@ export function applyCommand(g, o, cmd) {
     case 'special': {
       if (p.specialCd > 0) return false;
       const s = C.specialStats(p.age);
-      p.specialCd = C.SPECIAL_CD;
+      p.specialCd = C.SPECIAL_CD * p.m.specCd;
       for (let i = 0; i < s.count; i++) {
-        g.strikes.push({ o, age: p.age, t: 0.4 + (i / s.count) * 2.4 + rand(g) * 0.15 });
+        g.strikes.push({ o, age: p.age, mult: p.m.specDmg, t: 0.4 + (i / s.count) * 2.4 + rand(g) * 0.15 });
       }
       g.events.push({ e: 'special', o, age: p.age });
       return true;
@@ -125,9 +170,11 @@ export function applyCommand(g, o, cmd) {
       if (!canEvolve(p)) return false;
       const pct = p.hp / p.hpMax;
       p.age++;
-      p.hpMax = C.AGES[p.age].baseHp;
+      p.hpMax = Math.round(C.AGES[p.age].baseHp * p.m.baseHp);
       p.hp = Math.max(1, Math.round(p.hpMax * Math.min(1, pct + 0.15)));
       g.events.push({ e: 'evolve', o, age: p.age });
+      if (p.choice) chooseDoctrine(g, p, 0); // choix précédent non fait : on le valide
+      offerDoctrines(g, p);
       return true;
     }
   }
@@ -156,6 +203,7 @@ export function step(g, dt) {
   lists[1].sort((a, b) => a.x - b.x);
   g.lists = lists;
 
+  stepRelic(g, lists, dt);
   stepUnits(g, lists, dt);
   stepTurrets(g, lists, dt);
   stepStrikes(g, lists, dt);
@@ -164,8 +212,9 @@ export function step(g, dt) {
 }
 
 function stepPlayer(g, p, dt) {
-  p.gold += C.TRICKLE[p.age] * p.incomeMult * dt;
-  p.xp += C.XP_TRICKLE[p.age] * dt;
+  p.gold += C.TRICKLE[p.age] * p.incomeMult * p.m.income * dt;
+  p.xp += C.XP_TRICKLE[p.age] * p.m.xp * dt;
+  if (p.choice && (p.choiceT -= dt) <= 0) chooseDoctrine(g, p, 0);
   p.specialCd = Math.max(0, p.specialCd - dt);
   const q = p.queue[0];
   if (!q) return;
@@ -177,11 +226,12 @@ function stepPlayer(g, p, dt) {
     if (u.owner === p.i && !u.dead && Math.abs(u.x - sx) < u.r + s.r + 0.3) return; // zone de spawn occupée
   }
   p.queue.shift();
-  const m = (1 + p.up * C.UPGRADE_BONUS) * p.powerMult;
+  const m = (1 + p.up * C.UPGRADE_BONUS) * p.powerMult * p.m.vet;
   const u = {
     id: g.nextId++, owner: p.i, age: q.age, k: q.k, x: sx,
     hp: s.hp * m, hpMax: s.hp * m, cd: 0.3, moving: false, lastAtk: -9, dead: false,
     ...pick(s), dmg: s.dmg * m, lvl: p.up,
+    atkCd: s.atkCd / p.m.fury, speed: s.speed * p.m.fury, regen: p.m.regen,
   };
   g.units.push(u);
   g.events.push({ e: 'spawn', o: p.i, id: u.id });
@@ -198,6 +248,7 @@ function stepUnits(g, lists, dt) {
     const ef = lists[1 - o].find((u) => !u.dead);
     const ebx = baseXOf(1 - o);
     const hold = g.players[o].stance === 'hold';
+    const hero = list.find((u) => u.k === C.HERO_K && !u.dead);
     const holdX = baseXOf(o) + d * C.HOLD_LINE;
     for (let i = 0; i < list.length; i++) {
       const u = list[i];
@@ -221,23 +272,56 @@ function stepUnits(g, lists, dt) {
       u.moving = move > 0.0005;
       if (u.moving) u.x += d * move;
 
+      if (u.regen && u.hp < u.hpMax) u.hp = Math.min(u.hpMax, u.hp + u.hpMax * u.regen * dt);
       u.cd -= dt;
       if (target && u.cd <= 0) {
         u.cd = u.atkCd;
         u.lastAtk = g.t;
         const crit = rand(g) < C.CRIT_CHANCE;
-        const dmg = u.dmg * (crit ? C.CRIT_MULT : 1);
+        const aura = hero && hero !== u && Math.abs(hero.x - u.x) <= C.HERO_AURA_RANGE ? 1 + C.HERO_AURA_BONUS : 1;
+        const dmg = u.dmg * (crit ? C.CRIT_MULT : 1) * aura;
         if (u.proj) {
           fire(g, o, u.proj, u.x + d * u.r * 0.8, u.hitY + 0.3, target, target === BASE ? dmg * C.SIEGE_MULT : dmg, u.role === 'heavy' ? 1.2 : 0, u.age, -1, crit);
         } else if (target === BASE) {
           damageBase(g, 1 - o, dmg * C.SIEGE_MULT, u.x + d * (u.r + 0.3));
         } else {
-          damageUnit(g, target, dmg, o, crit, u.role === 'heavy' ? C.KNOCKBACK_HEAVY : crit ? 0.25 : 0);
+          damageUnit(g, target, dmg, o, crit, u.role === 'heavy' || u.role === 'hero' ? C.KNOCKBACK_HEAVY : crit ? 0.25 : 0);
           g.events.push({ e: 'melee', o, x: target.x - d * target.r * 0.6, y: target.hitY, age: u.age, heavy: u.role === 'heavy' });
         }
       }
     }
   }
+}
+
+// Relique : largage au milieu du front, capturée par la première unité qui la touche
+function stepRelic(g, lists, dt) {
+  if (!g.relic) {
+    if ((g.relicT -= dt) > 0) return;
+    const f0 = lists[0][0]?.x ?? baseXOf(0) + 12;
+    const f1 = lists[1][0]?.x ?? baseXOf(1) - 12;
+    const lim = C.BASE_X - 9;
+    const x = Math.max(-lim, Math.min(lim, (f0 + f1) / 2 + (rand(g) - 0.5) * 4));
+    g.relic = { x, fall: C.RELIC_FALL };
+    g.events.push({ e: 'relic', x });
+    return;
+  }
+  const r = g.relic;
+  if (r.fall > 0) { r.fall -= dt; return; }
+  let best = null, bd = Infinity;
+  for (const list of lists) for (const u of list) {
+    const d = Math.abs(u.x - r.x) - u.r;
+    if (!u.dead && d < 0.5 && d < bd) { bd = d; best = u; }
+  }
+  if (!best) return;
+  const p = g.players[best.owner];
+  const rw = C.relicReward(p.age);
+  const xp = p.age < C.AGES.length - 1 ? C.AGES[p.age].xpNext * rw.xpFrac : 0;
+  const gold = rw.gold * (xp ? 1 : 2);
+  p.gold += gold;
+  p.xp += xp;
+  g.events.push({ e: 'relicTaken', o: p.i, x: r.x, gold, xp: Math.round(xp) });
+  g.relic = null;
+  g.relicT = C.RELIC_EVERY;
 }
 
 function stepTurrets(g, lists, dt) {
@@ -253,7 +337,7 @@ function stepTurrets(g, lists, dt) {
       const pos = turretPos(o, s);
       if (Math.abs(ef.x - pos.x) > ts.range + ef.r) continue;
       t.cd = ts.atkCd;
-      fire(g, o, ts.proj, pos.x + dirOf(o) * 0.6, pos.y + 0.6, ef, ts.dmg, ts.aoe, t.age, s);
+      fire(g, o, ts.proj, pos.x + dirOf(o) * 0.6, pos.y + 0.6, ef, ts.dmg * p.m.turretDmg, ts.aoe, t.age, s);
     }
   }
 }
@@ -275,7 +359,7 @@ function stepStrikes(g, lists, dt) {
     const p = {
       id: g.nextId++, owner: st.o, kind: s.proj, age: st.age,
       x0: x - d * 7, y0: 26, x1: x, y1: 0, tid: -2, p: 0,
-      dur: s.proj === 'orbital' ? 0.25 : 0.95, arc: 0, dmg: s.dmg, aoe: s.aoe, x: x - d * 7, y: 26,
+      dur: s.proj === 'orbital' ? 0.25 : 0.95, arc: 0, dmg: s.dmg * (st.mult ?? 1), aoe: s.aoe, x: x - d * 7, y: 26,
     };
     g.projectiles.push(p);
   }
@@ -340,7 +424,7 @@ function damageUnit(g, u, dmg, src, crit = false, kb = 0) {
     // Recul vers sa propre base (les lourds encaissent mieux), sans repasser derrière la zone d'apparition
     const d = dirOf(u.owner);
     const minX = baseXOf(u.owner) + d * C.SPAWN_OFFSET;
-    u.x -= d * kb / (u.role === 'heavy' ? 2.5 : 1);
+    u.x -= d * kb / (u.role === 'heavy' || u.role === 'hero' ? 2.5 : 1);
     if ((u.x - minX) * d < 0) u.x = minX;
   }
   g.events.push({ e: 'hit', id: u.id, o: u.owner, x: u.x, y: u.hitY, dmg: Math.round(dmg), crit: crit || undefined });
@@ -348,7 +432,7 @@ function damageUnit(g, u, dmg, src, crit = false, kb = 0) {
   u.dead = true;
   const killer = g.players[src];
   const victim = g.players[u.owner];
-  killer.gold += u.cost * C.KILL_GOLD;
+  killer.gold += u.cost * C.KILL_GOLD * killer.m.loot;
   // XP plafonnée à l'âge du tueur : pas d'élastique qui annulerait l'avance de celui qui évolue en premier
   const xpBase = u.age > killer.age ? u.cost * C.COST_MULT[killer.age] / C.COST_MULT[u.age] : u.cost;
   killer.xp += xpBase * C.KILL_XP;
@@ -357,7 +441,7 @@ function damageUnit(g, u, dmg, src, crit = false, kb = 0) {
   victim.lost++;
   g.events.push({
     e: 'die', id: u.id, o: u.owner, x: u.x, age: u.age, k: u.k, role: u.role,
-    gold: Math.round(u.cost * C.KILL_GOLD), to: src,
+    gold: Math.round(u.cost * C.KILL_GOLD * killer.m.loot), to: src,
   });
 }
 
@@ -388,7 +472,9 @@ export function snapshot(g) {
       turrets: p.turrets.map((t) => (t ? { age: t.age, k: t.k } : null)),
       queue: p.queue.map((q) => ({ age: q.age, k: q.k, t: q.t, total: q.total })),
       specialCd: p.specialCd, kills: p.kills, lost: p.lost, up: p.up, stance: p.stance,
+      doctrines: p.doctrines, choice: p.choice, choiceT: p.choiceT,
     })),
+    relic: g.relic,
     units: g.units.map((u) => [u.id, u.owner, u.age, u.k, +u.x.toFixed(3), +(u.hp / u.hpMax).toFixed(3), u.moving ? 1 : 0, +u.lastAtk.toFixed(2), u.lvl]),
     proj: g.projectiles.map((p) => [p.id, p.kind, +p.x.toFixed(2), +p.y.toFixed(2), +(p.x1 - p.x0).toFixed(2), +(p.y1 - p.y0).toFixed(2)]),
   };
@@ -400,6 +486,7 @@ export function applySnapshot(g, s) {
   g.over = s.over;
   g.winner = s.winner;
   s.players.forEach((sp, i) => Object.assign(g.players[i], sp));
+  g.relic = s.relic ?? null;
   g.units = s.units.map(([id, owner, age, k, x, hpf, moving, lastAtk, lvl]) => {
     const st = C.unitStats(age, k);
     return { id, owner, age, k, x, hp: hpf * st.hp, hpMax: st.hp, moving: !!moving, lastAtk, lvl, r: st.r, hitY: st.hitY, role: st.role };

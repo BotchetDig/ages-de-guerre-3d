@@ -1,7 +1,7 @@
 // Fait jouer l'IA contre elle-même pour vérifier le rythme de la partie.
 // Usage : node tools/balance.mjs [nbParties] [diffA] [diffB]
 // Difficultés : easy | normal | hard | human (profil « joueur humain » : réagit lentement, dépense moins bien)
-import { createGame, step, applyCommand } from '../src/sim.js';
+import { createGame, step, applyCommand, startGame } from '../src/sim.js';
 import { createAI, aiThink, DIFFICULTY } from '../src/ai.js';
 import { TICK, AGES } from '../src/config.js';
 
@@ -22,10 +22,12 @@ const durations = [];
 for (let n = 0; n < N; n++) {
   const g = createGame();
   g.rng = 1000 + n * 77;
+  startGame(g);
   const ais = [makeAI(lv[0], 7 + n), makeAI(lv[1], 9001 + n * 3)];
   g.players.forEach((p, i) => { p.incomeMult = cfgOf(lv[i]).income; p.powerMult = cfgOf(lv[i]).power; });
   const ageAt = [[0], [0]];
   const turrets = [0, 0];
+  const heroes = [0, 0];
   let peakUnits = 0; const minHp = [1, 1];
   while (!g.over && g.t < 60 * 40) {
     for (let o = 0; o < 2; o++) {
@@ -33,6 +35,7 @@ for (let n = 0; n < N; n++) {
         if (!applyCommand(g, o, cmd)) return;
         if (cmd.c === 'evolve') ageAt[o].push(Math.round(g.t));
         if (cmd.c === 'turret') turrets[o]++;
+        if (cmd.c === 'unit' && cmd.k === 3) heroes[o]++;
       });
     }
     step(g, TICK);
@@ -43,7 +46,7 @@ for (let n = 0; n < N; n++) {
   durations.push(g.t);
   console.log(
     `#${n} ${g.over ? 'gagnant J' + g.winner : 'TIMEOUT'} en ${fmt(g.t)} | pic ${peakUnits} | ` +
-      g.players.map((p, i) => `J${i} ${AGES[p.age].name} (âges ${ageAt[i].slice(1).map(fmt).join(',')}) tourelles ${turrets[i]} minHP ${Math.round(minHp[i] * 100)}%`).join(' | ')
+      g.players.map((p, i) => `J${i} ${AGES[p.age].name} (âges ${ageAt[i].slice(1).map(fmt).join(',')}) tourelles ${turrets[i]} héros ${heroes[i]} doct ${p.doctrines.join('+')} minHP ${Math.round(minHp[i] * 100)}%`).join(' | ')
   );
 }
 durations.sort((a, b) => a - b);
