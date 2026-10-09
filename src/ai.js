@@ -5,7 +5,7 @@ import { canEvolve, baseXOf, dirOf, popOf } from './sim.js';
 export const DIFFICULTY = {
   easy:   { label: 'Facile',    power: 0.8,  income: 0.75, react: 0.9,  smart: 0.4 },
   normal: { label: 'Normal',    power: 1.0,  income: 1.0,  react: 0.55, smart: 0.75 },
-  hard:   { label: 'Difficile', power: 1.18, income: 1.3,  react: 0.3,  smart: 1.0 },
+  hard:   { label: 'Difficile', power: 1.18, income: 1.3,  react: 0.55,  smart: 1.0 },
 };
 
 export function createAI(level = 'normal', seed = 1) {

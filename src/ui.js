@@ -133,6 +133,7 @@ export class UI {
 
     // Ressources
     this.set($('#gold b'), 'text', fmt(p.gold));
+    this.set($('#income'), 'text', `+${fmt(C.TRICKLE[p.age] * (p.incomeMult ?? 1))}/s`);
     this.set($('#pop b'), 'text', `${popOf(g, me)}/${C.POP_CAP}`);
     const xpNeed = age.xpNext;
     const xpK = p.age >= 4 ? 1 : Math.min(1, p.xp / xpNeed);

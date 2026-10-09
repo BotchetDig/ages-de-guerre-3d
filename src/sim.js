@@ -165,6 +165,7 @@ export function step(g, dt) {
 
 function stepPlayer(g, p, dt) {
   p.gold += C.TRICKLE[p.age] * p.incomeMult * dt;
+  p.xp += C.XP_TRICKLE[p.age] * dt;
   p.specialCd = Math.max(0, p.specialCd - dt);
   const q = p.queue[0];
   if (!q) return;

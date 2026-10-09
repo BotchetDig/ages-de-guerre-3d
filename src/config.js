@@ -9,17 +9,18 @@ export const START_GOLD = 250;
 export const QUEUE_MAX = 5;
 export const POP_CAP = 18;          // unités vivantes + en production, par joueur
 export const SPECIAL_CD = 55;
-export const SLOT_COSTS = [0, 500, 2200, 7000];
+export const SLOT_COSTS = [0, 300, 1000, 3000];
 export const COST_MULT = [1, 3.4, 11, 36, 115];
 export const POWER_MULT = [1, 3.0, 9.0, 27, 80];
-export const TRICKLE = [3, 6, 15, 42, 115];   // or/s passif par âge
-export const KILL_GOLD = 1.0;                 // × coût de l'unité tuée
-export const KILL_XP = 0.7;
-export const SPEND_XP = 0.35;                 // XP par pièce d'or dépensée (unités, tourelles)
+export const TRICKLE = [8, 22, 60, 170, 480];  // or/s passif par âge (source principale de revenus)
+export const XP_TRICKLE = [4.2, 16.5, 58, 200, 0]; // XP/s passive : la progression ne dépend pas que du rythme des combats
+export const KILL_GOLD = 0.6;                 // × coût de l'unité tuée
+export const KILL_XP = 0.45;
+export const SPEND_XP = 0.18;                 // XP par pièce d'or dépensée (unités, tourelles)
 export const LOSS_XP = 0.15;                  // XP consolation pour le camp qui perd l'unité
 export const TURRET_REFUND = 0.5;
 export const SIEGE_MULT = 2;          // dégâts des unités contre les bases
-export const EROSION_START = 15 * 60;  // après ce temps, les bases subissent des dégâts accrus
+export const EROSION_START = 12 * 60;  // après ce temps, les bases subissent des dégâts accrus
 export const EROSION_PER_MIN = 0.25;   // +25% de dégâts subis par minute au-delà
 export const EROSION_DECAY = 0.003;    // et perte de 0,3% des PV max par seconde
 export const UPGRADE_MAX = 5;
@@ -44,9 +45,9 @@ const ROLE = {
 };
 
 const TURRET_ROLE = {
-  single: { cost: 110, dmg: 10, cd: 1.1,  range: 11,  aoe: 0 },
-  splash: { cost: 220, dmg: 12, cd: 2.4,  range: 13,  aoe: 2.4 },
-  rapid:  { cost: 380, dmg: 3.5, cd: 0.32, range: 9.5, aoe: 0 },
+  single: { cost: 90,  dmg: 24, cd: 1.0,  range: 12,  aoe: 0 },
+  splash: { cost: 170, dmg: 26, cd: 2.0,  range: 13,  aoe: 2.6 },
+  rapid:  { cost: 260, dmg: 7.5, cd: 0.3, range: 10,  aoe: 0 },
 };
 
 // Projectiles : vitesse (u/s) et hauteur d'arc.
